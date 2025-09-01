@@ -1,0 +1,27 @@
+{
+  "app": {
+    "title": "FoodLabel AI"
+  },
+  "action": {
+    "scan_label": "Label scannen"
+  },
+  "label": {
+    "recognized_text": "Herkende tekst",
+    "ingredients": "Ingrediënten",
+    "assessment": "Beoordeling"
+  },
+  "assess": {
+    "verdict": {
+      "safe": "VEILIG",
+      "caution": "VOORZICHTIG",
+      "avoid": "VERMIJDEN"
+    },
+    "score": "Score: {score}"
+  },
+  "reason": {
+    "UNKNOWN": "Geen specifieke problemen.",
+    "ALLERGEN_MATCH": "Bevat allergeen {param}.",
+    "VEGAN_CONFLICT": "Niet‑vegan ingrediënt.",
+    "ADDITIVE_FLAG": "Bevat additief {param}."
+  }
+}

@@ -1,0 +1,5 @@
+from fastapi import FastAPI
+from .assess import router as assess_router
+
+app = FastAPI(title="FoodLabel AI Backend")
+app.include_router(assess_router, prefix="")

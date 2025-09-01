@@ -1,0 +1,27 @@
+{
+  "app": {
+    "title": "FoodLabel AI"
+  },
+  "action": {
+    "scan_label": "Scan label"
+  },
+  "label": {
+    "recognized_text": "Recognized text",
+    "ingredients": "Ingredients",
+    "assessment": "Assessment"
+  },
+  "assess": {
+    "verdict": {
+      "safe": "SAFE",
+      "caution": "CAUTION",
+      "avoid": "AVOID"
+    },
+    "score": "Score: {score}"
+  },
+  "reason": {
+    "UNKNOWN": "No specific issues found.",
+    "ALLERGEN_MATCH": "Contains allergen {param}.",
+    "VEGAN_CONFLICT": "Non\u2011vegan ingredient.",
+    "ADDITIVE_FLAG": "Contains additive {param}."
+  }
+}

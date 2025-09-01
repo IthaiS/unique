@@ -1,0 +1,21 @@
+name: Android Build (APK)
+
+on:
+  workflow_dispatch:
+  push: { branches: [ develop ], paths: [ "foodlabel-ai/mobile/**" ] }
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: subosito/flutter-action@v2
+        with: { flutter-version: '3.22.2' }
+      - name: Build APK (debug)
+        working-directory: foodlabel-ai/mobile
+        run: |
+          flutter pub get
+          flutter build apk --debug --dart-define=BACKEND_BASE_URL=${{ vars.BACKEND_BASE_URL || '' }}
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with: { name: foodlabel-ai-debug-apk, path: foodlabel-ai/mobile/build/app/outputs/flutter-apk/app-debug.apk }
