@@ -1,15 +1,16 @@
 name: Deploy Backend (dev)
-
 on:
-  push: { branches: [ develop ], paths: [ "backend/**", "infra/**", "VERSION" ] }
+  push:
+    branches: [develop]
+    paths: ["backend/**","infra/**","VERSION"]
   workflow_dispatch:
-  workflow_run: { workflows: ["Infra Stack (Terraform)"], types: [completed] }
-
+  workflow_run:
+    workflows: ["Infra Stack (Terraform)"]
+    types: [completed]
 env:
-  REGION: ${{ vars.GCP_REGION || 'europe-west1' }}
-  SERVICE_NAME: ${{ vars.CLOUD_RUN_SERVICE || 'foodlabel-backend' }}
+  REGION: ${{ vars.GCP_REGION }}
+  SERVICE_NAME: ${{ vars.CLOUD_RUN_SERVICE }}
   SERVICE_SUFFIX: "-dev"
-
 jobs:
   deploy:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
@@ -18,26 +19,42 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - id: ver
+        shell: bash
         run: echo "version=$(tr -d '\n\r' < VERSION)" >> "$GITHUB_OUTPUT"
-      - run: |
+      - name: Set vars
+        shell: bash
+        run: |
+          REGION="${REGION:-europe-west1}"; SERVICE_NAME="${SERVICE_NAME:-foodlabel-backend}"
+          echo "REGION=$REGION" >> $GITHUB_ENV; echo "SERVICE_NAME=$SERVICE_NAME" >> $GITHUB_ENV
+          echo "SERVICE_SUFFIX=${SERVICE_SUFFIX}" >> $GITHUB_ENV
           echo "VERSION=${{ steps.ver.outputs.version }}" >> $GITHUB_ENV
           echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
-          echo "AR_IMAGE=${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/foodlabel-repo/${{ env.SERVICE_NAME }}" >> $GITHUB_ENV
+          echo "AR_IMAGE=${REGION}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/foodlabel-repo/${SERVICE_NAME}" >> $GITHUB_ENV
       - uses: google-github-actions/auth@v2
-        with: { workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER_DEV || secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}, service_account: ${{ secrets.GCP_SA_DEV || secrets.GCP_SERVICE_ACCOUNT_EMAIL }} }
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WIF_PROVIDER_DEV }}
+          service_account: ${{ secrets.GCP_SA_DEV }}
+      - name: Fallback WIF
+        if: ${{ failure() }}
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
       - uses: google-github-actions/setup-gcloud@v2
         with: { project_id: ${{ secrets.GCP_PROJECT_ID }} }
-      - run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev -q
-      - run: |
-          docker build -t "$AR_IMAGE:v${VERSION}-dev" -t "$AR_IMAGE:sha-${SHORT_SHA}" -f backend/Dockerfile .
-          docker push "$AR_IMAGE:v${VERSION}-dev"; docker push "$AR_IMAGE:sha-${SHORT_SHA}"
+      - name: Docker auth
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" -q
+      - name: Build & Push
+        shell: bash
+        run: |
+          docker build -t "${AR_IMAGE}:v${VERSION}-dev" -t "${AR_IMAGE}:sha-${SHORT_SHA}" -f backend/Dockerfile .
+          docker push "${AR_IMAGE}:v${VERSION}-dev"; docker push "${AR_IMAGE}:sha-${SHORT_SHA}"
       - name: Ensure service
+        shell: bash
         run: |
-          SVC="${{ env.SERVICE_NAME }}${{ env.SERVICE_SUFFIX }}"
-          if ! gcloud run services describe "$SVC" --region "${{ env.REGION }}" >/dev/null 2>&1; then
-            gcloud run deploy "$SVC" --image "$AR_IMAGE:v${VERSION}-dev" --region "${{ env.REGION }}" --allow-unauthenticated
+          SVC="${SERVICE_NAME}${SERVICE_SUFFIX}"
+          if ! gcloud run services describe "$SVC" --region "${REGION}" >/dev/null 2>&1; then
+            gcloud run deploy "$SVC" --image "${AR_IMAGE}:v${VERSION}-dev" --region "${REGION}" --allow-unauthenticated
           fi
-      - name: Update service
-        run: |
-          SVC="${{ env.SERVICE_NAME }}${{ env.SERVICE_SUFFIX }}"
-          gcloud run deploy "$SVC" --image "$AR_IMAGE:v${VERSION}-dev" --region "${{ env.REGION }}" --allow-unauthenticated             --labels app=foodlabel,env=dev,version="${VERSION}",commit="${SHORT_SHA}"
+      - name: Deploy update
+        run: gcloud run deploy "${{ env.SERVICE_NAME }}${{ env.SERVICE_SUFFIX }}" --image "${{ env.AR_IMAGE }}:v${{ env.VERSION }}-dev" --region "${{ env.REGION }}" --allow-unauthenticated --labels "app=foodlabel,env=dev,version=${{ env.VERSION }},commit=${{ env.SHORT_SHA }}"

@@ -1,17 +1,10 @@
-resource "google_project_service" "apis" { for_each=toset(["iam.googleapis.com","iamcredentials.googleapis.com","run.googleapis.com","artifactregistry.googleapis.com","secretmanager.googleapis.com","firestore.googleapis.com"])
-  project=var.project_id service=each.key }
+resource "google_project_service" "apis" { for_each=toset(["iam.googleapis.com","iamcredentials.googleapis.com","run.googleapis.com","artifactregistry.googleapis.com","secretmanager.googleapis.com","firestore.googleapis.com"]) project=var.project_id service=each.key }
 resource "google_iam_workload_identity_pool" "pool" { project=var.project_id location=var.wif_location workload_identity_pool_id=var.pool_id display_name="GitHub pool" }
-resource "google_iam_workload_identity_pool_provider" "dev" { project=var.project_id location=var.wif_location workload_identity_pool_id=google_iam_workload_identity_pool.pool.workload_identity_pool_id
-  workload_identity_pool_provider_id=var.provider_dev_id display_name="GitHub provider (dev)"
-  attribute_mapping={"google.subject":"assertion.sub","attribute.repository":"assertion.repository","attribute.ref":"assertion.ref"} oidc{issuer_uri="https://token.actions.githubusercontent.com"} }
-resource "google_iam_workload_identity_pool_provider" "prod" { project=var.project_id location=var.wif_location workload_identity_pool_id=google_iam_workload_identity_pool.pool.workload_identity_pool_id
-  workload_identity_pool_provider_id=var.provider_prod_id display_name="GitHub provider (prod)"
-  attribute_mapping={"google.subject":"assertion.sub","attribute.repository":"assertion.repository","attribute.ref":"assertion.ref"} oidc{issuer_uri="https://token.actions.githubusercontent.com"} }
+resource "google_iam_workload_identity_pool_provider" "dev" { project=var.project_id location=var.wif_location workload_identity_pool_id=google_iam_workload_identity_pool.pool.workload_identity_pool_id workload_identity_pool_provider_id=var.provider_dev_id display_name="GitHub provider (dev)" attribute_mapping={"google.subject":"assertion.sub","attribute.repository":"assertion.repository","attribute.ref":"assertion.ref"} oidc{issuer_uri="https://token.actions.githubusercontent.com"} }
+resource "google_iam_workload_identity_pool_provider" "prod" { project=var.project_id location=var.wif_location workload_identity_pool_id=google_iam_workload_identity_pool.pool.workload_identity_pool_id workload_identity_pool_provider_id=var.provider_prod_id display_name="GitHub provider (prod)" attribute_mapping={"google.subject":"assertion.sub","attribute.repository":"assertion.repository","attribute.ref":"assertion.ref"} oidc{issuer_uri="https://token.actions.githubusercontent.com"} }
 resource "google_service_account" "deploy_dev" { account_id=var.deploy_sa_dev_id display_name="GitHub Deployer (dev)" project=var.project_id }
 resource "google_service_account" "deploy_prod" { account_id=var.deploy_sa_prod_id display_name="GitHub Deployer (prod)" project=var.project_id }
-locals { pool=google_iam_workload_identity_pool.pool.name repo=var.github_repository
-  dev_member_ref="principal://iam.googleapis.com/${local.pool}/attribute.repository/${local.repo}/attribute.ref/${var.dev_ref}"
-  prod_member_ref="principal://iam.googleapis.com/${local.pool}/attribute.repository/${local.repo}/attribute.ref/${var.prod_ref}" }
+locals { pool=google_iam_workload_identity_pool.pool.name repo=var.github_repository dev_member_ref="principal://iam.googleapis.com/${local.pool}/attribute.repository/${local.repo}/attribute.ref/${var.dev_ref}" prod_member_ref="principal://iam.googleapis.com/${local.pool}/attribute.repository/${local.repo}/attribute.ref/${var.prod_ref}" }
 resource "google_service_account_iam_binding" "wif_dev" { service_account_id=google_service_account.deploy_dev.name role="roles/iam.workloadIdentityUser" members=[local.dev_member_ref] }
 resource "google_service_account_iam_binding" "wif_prod" { service_account_id=google_service_account.deploy_prod.name role="roles/iam.workloadIdentityUser" members=[local.prod_member_ref] }
 resource "google_project_iam_member" "run_admin_dev" { count=var.assign_deploy_roles?1:0 project=var.project_id role="roles/run.admin" member="serviceAccount:${google_service_account.deploy_dev.email}" }
@@ -29,8 +22,5 @@ resource "google_project_iam_member" "runtime_trace" { project=var.project_id ro
 resource "google_project_iam_member" "runtime_firestore" { project=var.project_id role="roles/datastore.user" member="serviceAccount:${google_service_account.runtime.email}" }
 resource "google_secret_manager_secret_iam_member" "runtime_sentry" { secret_id=google_secret_manager_secret.sentry.id role="roles/secretmanager.secretAccessor" member="serviceAccount:${google_service_account.runtime.email}" }
 resource "google_secret_manager_secret_iam_member" "runtime_slack" { secret_id=google_secret_manager_secret.slack.id role="roles/secretmanager.secretAccessor" member="serviceAccount:${google_service_account.runtime.email}" }
-resource "google_cloud_run_v2_service" "backend" { count=var.create_cloud_run?1:0 name=var.run_service_name location=var.region ingress="INGRESS_TRAFFIC_ALL"
-  template{ service_account=google_service_account.runtime.email timeout="60s"
-    containers{ image=var.run_image ports{container_port=8080}
-      env{ name="ENV" value="prod"} } } }
+resource "google_cloud_run_v2_service" "backend" { count=var.create_cloud_run?1:0 name=var.run_service_name location=var.region ingress="INGRESS_TRAFFIC_ALL" template{ service_account=google_service_account.runtime.email timeout="60s" containers{ image=var.run_image ports{container_port=8080} env{name="ENV" value="prod"} } } }
 resource "google_firestore_database" "default" { count=var.create_firestore?1:0 project=var.project_id name="(default)" location_id=var.firestore_location type="FIRESTORE_NATIVE" }

@@ -1,11 +1,6 @@
 name: Deploy Backend (manual)
-
 on: { workflow_dispatch: {} }
-
-env:
-  REGION: ${{ vars.GCP_REGION || 'europe-west1' }}
-  SERVICE_NAME: ${{ vars.CLOUD_RUN_SERVICE || 'foodlabel-backend' }}
-
+env: { REGION: ${{ vars.GCP_REGION }}, SERVICE_NAME: ${{ vars.CLOUD_RUN_SERVICE }} }
 jobs:
   deploy:
     runs-on: ubuntu-latest
@@ -13,18 +8,27 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - id: ver
+        shell: bash
         run: echo "version=$(tr -d '\n\r' < VERSION)" >> "$GITHUB_OUTPUT"
-      - run: |
+      - name: Set vars
+        shell: bash
+        run: |
+          REGION="${REGION:-europe-west1}"; SERVICE_NAME="${SERVICE_NAME:-foodlabel-backend}"
+          echo "REGION=$REGION" >> $GITHUB_ENV; echo "SERVICE_NAME=$SERVICE_NAME" >> $GITHUB_ENV
           echo "VERSION=${{ steps.ver.outputs.version }}" >> $GITHUB_ENV
           echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
-          echo "AR_IMAGE=${{ env.REGION }}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/foodlabel-repo/${{ env.SERVICE_NAME }}" >> $GITHUB_ENV
+          echo "AR_IMAGE=${REGION}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/foodlabel-repo/${SERVICE_NAME}" >> $GITHUB_ENV
       - uses: google-github-actions/auth@v2
-        with: { workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}, service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }} }
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
       - uses: google-github-actions/setup-gcloud@v2
         with: { project_id: ${{ secrets.GCP_PROJECT_ID }} }
-      - run: gcloud auth configure-docker ${{ env.REGION }}-docker.pkg.dev -q
-      - run: |
-          docker build -t "$AR_IMAGE:v${VERSION}" -t "$AR_IMAGE:sha-${SHORT_SHA}" -f backend/Dockerfile .
-          docker push "$AR_IMAGE:v${VERSION}"; docker push "$AR_IMAGE:sha-${SHORT_SHA}"
-      - run: |
-          gcloud run deploy "${{ env.SERVICE_NAME }}" --region "${{ env.REGION }}" --image "$AR_IMAGE:v${VERSION}"             --allow-unauthenticated --labels app=foodlabel,version="${VERSION}",commit="${SHORT_SHA}"
+      - name: Docker auth
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" -q
+      - name: Build & Push
+        run: |
+          docker build -t "${AR_IMAGE}:v${VERSION}" -t "${AR_IMAGE}:sha-${SHORT_SHA}" -f backend/Dockerfile .
+          docker push "${AR_IMAGE}:v${VERSION}"; docker push "${AR_IMAGE}:sha-${SHORT_SHA}"
+      - name: Deploy
+        run: gcloud run deploy "${{ env.SERVICE_NAME }}" --region "${{ env.REGION }}" --image "${{ env.AR_IMAGE }}:v${{ env.VERSION }}" --allow-unauthenticated --labels "app=foodlabel,version=${{ env.VERSION }},commit=${{ env.SHORT_SHA }}"

@@ -1,9 +1,9 @@
 name: Infra Stack (Terraform)
-
 on:
-  push: { branches: [ main, develop ], paths: [ "foodlabel-ai/infra/stack/**" ] }
+  push:
+    branches: [main, develop]
+    paths: ["foodlabel-ai/infra/stack/**"]
   workflow_dispatch:
-
 jobs:
   plan-apply:
     runs-on: ubuntu-latest
@@ -12,7 +12,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: google-github-actions/auth@v2
-        with: { workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}, service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }} }
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
       - uses: google-github-actions/setup-gcloud@v2
         with: { project_id: ${{ secrets.GCP_PROJECT_ID }} }
       - uses: hashicorp/setup-terraform@v3
@@ -23,6 +25,7 @@ jobs:
       - name: Plan
         id: plan
         working-directory: ${{ env.TF_WORKDIR }}
+        shell: bash
         run: |
           set +e
           terraform plan -detailed-exitcode -out=tfplan
