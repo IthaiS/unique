@@ -20,18 +20,27 @@ def load_policy():
         return json.load(f)
 
 def assess_tokens(tokens, policy):
-    score = 0; reasons = []; toks = [t.lower().strip() for t in tokens]
+    score = 0
+    reasons = []
+    toks = [t.lower().strip() for t in tokens]
     if any(t in ["milk","peanut","egg","wheat","soy","fish","shellfish","tree nut"] for t in toks):
-        reasons.append({"code":"ALLERGEN_MATCH","param":"major_allergen"}); score += policy["scoring"]["weights"]["ALLERGEN_MATCH"]
-    if any(t in policy.get("animal_tokens",[]) for t in toks):
-        reasons.append({"code":"VEGAN_CONFLICT","param":"animal"}); score += policy["scoring"]["weights"]["VEGAN_CONFLICT"]
+        reasons.append({"code":"ALLERGEN_MATCH","param":"major_allergen"})
+        score += policy["scoring"]["weights"]["ALLERGEN_MATCH"]
+    if any(t in policy.get("animal_tokens", []) for t in toks):
+        reasons.append({"code":"VEGAN_CONFLICT","param":"animal"})
+        score += policy["scoring"]["weights"]["VEGAN_CONFLICT"]
     if any(t in ["e951","aspartame"] for t in toks):
-        reasons.append({"code":"ADDITIVE_FLAG","param":"E951"}); score += policy["scoring"]["weights"]["ADDITIVE_FLAG"]
+        reasons.append({"code":"ADDITIVE_FLAG","param":"E951"})
+        score += policy["scoring"]["weights"]["ADDITIVE_FLAG"]
     if not reasons:
-        reasons.append({"code":"UNKNOWN","param":"none"}); score += policy["scoring"]["weights"]["UNKNOWN"]
-    thr = policy["scoring"]["thresholds"]; verdict = "safe"
-    if score >= thr["avoid"]: verdict = "avoid"
-    elif score >= thr["caution"]: verdict = "caution"
+        reasons.append({"code":"UNKNOWN","param":"none"})
+        score += policy["scoring"]["weights"]["UNKNOWN"]
+    thr = policy["scoring"]["thresholds"]
+    verdict = "safe"
+    if score >= thr["avoid"]:
+        verdict = "avoid"
+    elif score >= thr["caution"]:
+        verdict = "caution"
     return score, verdict, reasons
 
 @router.post("/v1/assess", response_model=AssessResp)

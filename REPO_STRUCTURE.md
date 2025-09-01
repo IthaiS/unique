@@ -1,10 +1,19 @@
-# REPO_STRUCTURE
 - VERSION
 - RELEASE_NOTES.md
-- backend/**
-- foodlabel-ai/mobile/**
-- foodlabel-ai/infra/{wif,stack}/**
-- .github/workflows/*.yml
-- scripts/*.sh
-- Makefile, commit_super_release.sh
+- README_SUPER.md
 - docs/ARCHITECTURE.md
+- backend/
+  - api.py, assess.py, policies/policy_v1.json
+  - requirements.txt, Dockerfile
+  - tests/test_assess.py
+  - README.md
+- foodlabel-ai/mobile/
+  - pubspec.yaml, lib/**, assets/i18n/*.json, scripts/bootstrap_mobile.sh, test/**
+  - README.md
+- foodlabel-ai/infra/wif/** (Terraform module to create WIF provider + SA)
+- foodlabel-ai/infra/stack/** (Full infra stack)
+- .github/workflows/** (Guarded + hardened CI/CD)
+- scripts/*.sh (release, tag, verify, self_check)
+- Makefile, commit_super_release.sh
+- CHECKSUMS.txt (integrity)
+- manifest.json (file list + hashes + sizes)

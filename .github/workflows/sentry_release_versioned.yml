@@ -1,18 +1,35 @@
 name: Sentry Release (versioned)
+
 on:
-  push: { branches: [main], paths: ["VERSION"] }
+  push:
+    branches:
+      - main
+    paths:
+      - "VERSION"
   workflow_dispatch:
-  workflow_run: { workflows: ["Deploy Backend (prod)"], types: [completed] }
+  workflow_run:
+    workflows:
+      - "Deploy Backend (prod)"
+    types:
+      - completed
+
 jobs:
   release:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
+
     steps:
-      - uses: actions/checkout@v4
-      - id: ver
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Read VERSION
+        id: ver
         shell: bash
-        run: echo "version=$(tr -d '\n\r' < VERSION)" >> "$GITHUB_OUTPUT"
-      - uses: getsentry/action-release@v1
+        run: |
+          echo "version=$(tr -d '\n\r' < VERSION)" >> "$GITHUB_OUTPUT"
+
+      - name: Create Sentry release
+        uses: getsentry/action-release@v1
         env:
           SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
           SENTRY_ORG: ${{ secrets.SENTRY_ORG }}
