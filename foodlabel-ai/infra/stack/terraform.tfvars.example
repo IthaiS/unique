@@ -1,4 +1,4 @@
-project_id="YOUR_GCP_PROJECT_ID"
+project_id="sound-paratext-470818-m4"
 region="europe-west1"
 github_repository="IthaiS/unique"
 dev_ref="refs/heads/develop"
@@ -13,7 +13,3 @@ create_cloud_run=true
 run_service_name="foodlabel-backend"
 run_image="gcr.io/google-samples/hello-app:1.0"
 runtime_sa_id="foodlabel-runtime"
-create_firestore=false
-firestore_location="europe-west1"
-sentry_dsn_secret_id="sentry-dsn"
-slack_webhook_secret_id="slack-webhook"

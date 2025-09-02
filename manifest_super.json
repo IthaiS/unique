@@ -1,0 +1,44 @@
+{
+  "version": "0.9.0",
+  "generated_at": "20250902_110915",
+  "sub_bundles": [
+    {
+      "name": "mobile_bundle.zip",
+      "sha256": "071fc6f92cc152275ba2de888e5dc983f5c2207482716492a1884a0fe5fec222",
+      "bytes": 7551
+    },
+    {
+      "name": "backend_bundle.zip",
+      "sha256": "e3aaf2f0cfff0d671600373bb493e6d399d43371d6a97adf84f6fdbcb307dd0d",
+      "bytes": 2656
+    },
+    {
+      "name": "infra_bundle.zip",
+      "sha256": "e73cb439cca3ae7c98b0246494f914fb13a4b0f6dca4f01b1c75f46d4934f6c6",
+      "bytes": 2818
+    },
+    {
+      "name": "workflows_bundle.zip",
+      "sha256": "76586099d68307bcf185b25a63828ed48c784e8d2b2c9f13405825d80722075a",
+      "bytes": 6640
+    },
+    {
+      "name": "docs_bundle.zip",
+      "sha256": "178fbda8035db322dac7dde2533d1f4fbd4e3a50daef2a53ebaf98e8afe5d33f",
+      "bytes": 1547
+    }
+  ],
+  "top_level": [
+    "VERSION",
+    "RELEASE_NOTES.md",
+    "README_SUPER.md",
+    "scripts/bootstrap_all.sh",
+    "scripts/expand_bundles.sh",
+    "scripts/super_self_check.sh",
+    "scripts/super_commit.sh",
+    "scripts/write_env_from_tf.sh",
+    "scripts/gh_sync_secrets.sh",
+    "manifest_super.json",
+    "CHECKSUMS.txt"
+  ]
+}

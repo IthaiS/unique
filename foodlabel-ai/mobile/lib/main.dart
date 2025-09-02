@@ -16,37 +16,27 @@ class FoodLabelApp extends StatefulWidget {
 
 class _FoodLabelAppState extends State<FoodLabelApp> {
   Locale _locale = const Locale('en');
-  Map<String, dynamic> _translations = {};
+  Map<String, dynamic> _t = {};
 
   @override
   void initState() {
     super.initState();
-    I18n.loadTranslations(['en','nl_BE','fr_BE']).then((map) {
-      setState(() { _translations = map; });
-    });
+    I18n.loadTranslations(['en', 'nl_BE', 'fr_BE']).then((m) { setState(() => _t = m); });
   }
 
-  void _setLocale(Locale locale) {
-    setState(() { _locale = locale; });
-  }
+  void _setLocale(Locale l) => setState(() => _locale = l);
 
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'FoodLabel AI',
-      debugShowCheckedModeBanner: false,
-      locale: _locale,
-      supportedLocales: const [
-        Locale('en'),
-        Locale('nl', 'BE'),
-        Locale('fr', 'BE'),
-      ],
-      localizationsDelegates: const [
-        GlobalMaterialLocalizations.delegate,
-        GlobalWidgetsLocalizations.delegate,
-        GlobalCupertinoLocalizations.delegate,
-      ],
-      home: HomePage(onLocaleChange: _setLocale, translations: _translations),
-    );
-  }
+  Widget build(BuildContext context) => MaterialApp(
+        title: 'FoodLabel AI',
+        debugShowCheckedModeBanner: false,
+        locale: _locale,
+        supportedLocales: const [Locale('en'), Locale('nl', 'BE'), Locale('fr', 'BE')],
+        localizationsDelegates: const [
+          GlobalMaterialLocalizations.delegate,
+          GlobalWidgetsLocalizations.delegate,
+          GlobalCupertinoLocalizations.delegate
+        ],
+        home: HomePage(onLocaleChange: _setLocale, translations: _t),
+      );
 }

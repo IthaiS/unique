@@ -1,9 +1,0 @@
-project_id="YOUR_GCP_PROJECT_ID"
-github_repository="IthaiS/unique"
-github_ref="refs/heads/main"
-restrict_to_branch=true
-assign_deploy_roles=true
-service_account_id="github-deployer"
-pool_id="github-pool"
-provider_id="github-provider"
-location="global"

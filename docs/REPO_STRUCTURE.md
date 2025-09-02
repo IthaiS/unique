@@ -1,0 +1,6 @@
+- backend/
+- foodlabel-ai/mobile/
+- foodlabel-ai/infra/stack/
+- .github/workflows/
+- scripts/
+- docs/

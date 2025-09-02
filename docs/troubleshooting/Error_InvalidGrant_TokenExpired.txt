@@ -1,0 +1,89 @@
+after terraform apply:
+
+│ Error: Error when reading or editing Project Service : Request `List Project Services sound-paratext-470818-m4` returned error: Batch request and retried single request "List Project Services sound-paratext-470818-m4" both failed. Final error: Failed to list enabled services for project sound-paratext-470818-m4: Get "https://serviceusage.googleapis.com/v1/projects/sound-paratext-470818-m4/services?alt=json&fields=services%2Fname%2CnextPageToken&filter=state%3AENABLED&pageSize=200&prettyPrint=false": oauth2: "invalid_grant" "Token has been expired or revoked."
+
+
+That error is purely about auth tokens on your machine—not Terraform code.
+
+The Google provider uses Application Default Credentials (ADC). Your local ADC token is expired/revoked, so the Service Usage API call fails. Fix it by refreshing ADC (or using SA impersonation). Pick one of the two paths below.
+
+Option A — Refresh local ADC (quickest)
+# 1) Make sure the right project is selected
+gcloud config set project sound-paratext-470818-m4
+
+# 2) Clean up any stale/expired tokens
+gcloud auth revoke --all || true
+gcloud auth application-default revoke || true
+
+# 3) Log in (user account) and write fresh ADC creds
+gcloud auth login
+gcloud auth application-default login   # writes ~/.config/gcloud/application_default_credentials.json
+
+# 4) (Optional but helpful) set the account you just logged in with
+gcloud config set account "$(gcloud auth list --filter=status:ACTIVE --format='value(account)')"
+
+# 5) Re-try Terraform
+cd foodlabel-ai/infra/stack
+terraform init -upgrade
+terraform apply
+
+
+If you still see invalid_grant, check these common culprits:
+
+System clock skew: ensure your Mac time is auto-sync’d (Settings → Date & Time). Big skew can invalidate tokens.
+
+Multiple Google accounts: confirm gcloud config list shows the account with access to the project.
+
+Stale ADC file: delete ~/.config/gcloud/application_default_credentials.json and run step 3 again.
+
+Org-level restrictions: your user must have permission to view/enable services on that project.
+
+Option B — Use SA impersonation (more robust)
+
+If your user has roles/iam.serviceAccountTokenCreator on the deploy SA, you can avoid user ADC expiry and let Terraform impersonate the SA:
+
+Grant your user the token creator role on the deploy SA:
+
+gcloud iam service-accounts add-iam-policy-binding \
+  github-deployer-dev@sound-paratext-470818-m4.iam.gserviceaccount.com \
+  --member="user:YOUR_EMAIL@domain.com" \
+  --role="roles/iam.serviceAccountTokenCreator"
+
+
+Update the provider in foodlabel-ai/infra/stack/versions.tf:
+
+provider "google" {
+  project                      = var.project_id
+  region                       = var.region
+  impersonate_service_account  = "github-deployer-dev@${var.project_id}.iam.gserviceaccount.com"
+}
+
+
+Then:
+
+gcloud auth login --update-adc   # minimal ADC, Terraform will impersonate the SA
+cd foodlabel-ai/infra/stack
+terraform init -upgrade
+terraform apply
+
+If you’re running this in GitHub Actions
+
+Ensure the workflow is using Workload Identity Federation (it is, per our YAML).
+
+Make sure the repo secrets/vars exist (we added scripts to sync them):
+
+GCP_PROJECT_ID
+
+GCP_WORKLOAD_IDENTITY_PROVIDER (or env-specific GCP_WIF_PROVIDER_DEV/PROD)
+
+GCP_SERVICE_ACCOUNT_EMAIL (or GCP_SA_DEV/PROD)
+
+The auth step must run before Terraform:
+
+- uses: google-github-actions/auth@v2
+  with:
+    workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+    service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+
+
+Try Option A first—it fixes 95% of local invalid_grant cases. If you want, I can also rebundle the pack with provider settings pre-wired for SA impersonation and a tiny make auth helper so your local setup is one command.

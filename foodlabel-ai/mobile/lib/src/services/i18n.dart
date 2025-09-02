@@ -13,17 +13,12 @@ class I18n {
     return map;
   }
 
-  static String t(Map<String, dynamic> translations, Locale locale, String key, {Map<String,String>? params}) {
-    final tag = locale.languageCode == 'en' ? 'en'
-      : (locale.languageCode == 'nl' ? 'nl_BE' : 'fr_BE');
-    final parts = key.split('.');
-    dynamic curr = translations[tag];
-    for (final p in parts) {
-      if (curr==null) break;
-      curr = curr[p];
-    }
-    String result = curr?.toString() ?? key;
-    params?.forEach((k, v) { result = result.replaceAll('{$k}', v); });
-    return result;
+  static String t(Map<String, dynamic> t, Locale loc, String key, {Map<String, String>? params}) {
+    final tag = loc.languageCode == 'en' ? 'en' : (loc.languageCode == 'nl' ? 'nl_BE' : 'fr_BE');
+    dynamic cur = t[tag];
+    for (final p in key.split('.')) { if (cur == null) break; cur = cur[p]; }
+    String res = cur?.toString() ?? key;
+    params?.forEach((k, v) { res = res.replaceAll('{$k}', v); });
+    return res;
   }
 }

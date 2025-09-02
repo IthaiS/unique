@@ -14,10 +14,10 @@ class OcrService {
     await controller.dispose();
 
     final input = InputImage.fromFilePath(picture.path);
-    final textRecognizer = TextRecognizer();
-    final recognizedText = await textRecognizer.processImage(input);
-    await textRecognizer.close();
+    final rec = TextRecognizer();
+    final text = await rec.processImage(input);
+    await rec.close();
     try { File(picture.path).deleteSync(); } catch (_) {}
-    return recognizedText.text;
+    return text.text;
   }
 }

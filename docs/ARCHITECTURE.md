@@ -1,8 +1,7 @@
-# Architecture
-
+# Architecture (Mermaid)
 ```mermaid
 flowchart TD
-  A[Flutter App] -->|OCR| B[ML Kit Text Recognition]
+  A[Flutter App] -->|OCR| B[ML Kit]
   A -->|HTTP JSON| C[(FastAPI Backend)]
   C -->|Assess| D[Policy v1]
   C -->|Run| E[Cloud Run]

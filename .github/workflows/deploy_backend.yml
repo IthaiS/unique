@@ -1,71 +1,39 @@
 name: Deploy Backend (manual)
-
-on:
-  workflow_dispatch:
-
+on: { workflow_dispatch: {} }
 env:
   REGION: ${{ vars.GCP_REGION }}
   SERVICE_NAME: ${{ vars.CLOUD_RUN_SERVICE }}
-
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  WIF_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+  WIF_SA_EMAIL: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    permissions:
-      id-token: write
-      contents: read
-
+    permissions: { id-token: write, contents: read }
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Read VERSION
-        id: ver
-        shell: bash
+      - uses: actions/checkout@v4
+      - id: ver
+        run: echo "version=$(tr -d '\n\r' < VERSION)" >> "$GITHUB_OUTPUT"
+      - name: Vars
         run: |
-          echo "version=$(tr -d '\n\r' < VERSION)" >> "$GITHUB_OUTPUT"
-
-      - name: Set variables (safe defaults)
-        shell: bash
-        run: |
-          REGION="${REGION:-europe-west1}"
-          SERVICE_NAME="${SERVICE_NAME:-foodlabel-backend}"
-          echo "REGION=$REGION" >> "$GITHUB_ENV"
-          echo "SERVICE_NAME=$SERVICE_NAME" >> "$GITHUB_ENV"
-          echo "VERSION=${{ steps.ver.outputs.version }}" >> "$GITHUB_ENV"
-          echo "SHORT_SHA=${GITHUB_SHA::7}" >> "$GITHUB_ENV"
-          echo "AR_IMAGE=${REGION}-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/foodlabel-repo/${SERVICE_NAME}" >> "$GITHUB_ENV"
-
-      - name: Auth to Google Cloud (WIF - SHARED)
-        if: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER != '' && secrets.GCP_SERVICE_ACCOUNT_EMAIL != '' }}
+          REGION="${REGION:-europe-west1}"; SERVICE_NAME="${SERVICE_NAME:-foodlabel-backend}"
+          echo "REGION=$REGION" >> $GITHUB_ENV; echo "SERVICE_NAME=$SERVICE_NAME" >> $GITHUB_ENV
+          echo "VERSION=${{ steps.ver.outputs.version }}" >> $GITHUB_ENV
+          echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
+          echo "AR_IMAGE=${REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/foodlabel-repo/${SERVICE_NAME}" >> $GITHUB_ENV
+      - name: Auth
+        if: ${{ env.WIF_PROVIDER != '' && env.WIF_SA_EMAIL != '' }}
         uses: google-github-actions/auth@v2
         with:
-          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
-
-      - name: Fail if no WIF secrets configured
-        if: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER == '' || secrets.GCP_SERVICE_ACCOUNT_EMAIL == '' }}
+          workload_identity_provider: ${{ env.WIF_PROVIDER }}
+          service_account: ${{ env.WIF_SA_EMAIL }}
+      - uses: google-github-actions/setup-gcloud@v2
+        with: { project_id: ${{ env.GCP_PROJECT_ID }} }
+      - name: Docker auth
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" -q
+      - name: Build & Push
         run: |
-          echo "::error::No valid shared WIF secrets (GCP_WORKLOAD_IDENTITY_PROVIDER & GCP_SERVICE_ACCOUNT_EMAIL)."
-          exit 1
-
-      - name: Setup gcloud
-        uses: google-github-actions/setup-gcloud@v2
-        with:
-          project_id: ${{ secrets.GCP_PROJECT_ID }}
-
-      - name: Configure Docker auth
-        shell: bash
-        run: |
-          gcloud auth configure-docker "${REGION}-docker.pkg.dev" -q
-
-      - name: Build & Push image
-        shell: bash
-        run: |
-          docker build             -t "${AR_IMAGE}:v${VERSION}"             -t "${AR_IMAGE}:sha-${SHORT_SHA}"             -f backend/Dockerfile .
-          docker push "${AR_IMAGE}:v${VERSION}"
-          docker push "${AR_IMAGE}:sha-${SHORT_SHA}"
-
-      - name: Deploy to Cloud Run
-        shell: bash
-        run: |
-          gcloud run deploy "${SERVICE_NAME}"             --region "${REGION}"             --image "${AR_IMAGE}:v${VERSION}"             --allow-unauthenticated             --labels "app=foodlabel,version=${VERSION},commit=${SHORT_SHA}"
+          docker build -t "${AR_IMAGE}:v${VERSION}" -t "${AR_IMAGE}:sha-${SHORT_SHA}" -f backend/Dockerfile .
+          docker push "${AR_IMAGE}:v${VERSION}"; docker push "${AR_IMAGE}:sha-${SHORT_SHA}"
+      - name: Deploy
+        run: gcloud run deploy "${SERVICE_NAME}" --region "${REGION}" --image "${AR_IMAGE}:v${VERSION}" --allow-unauthenticated --labels "app=foodlabel,version=${VERSION},commit=${SHORT_SHA}"

@@ -1,0 +1,40 @@
+# === Terraform ===
+**/.terraform/
+*.tfstate
+*.tfstate.*
+crash.log
+terraform.tfvars
+*.tfvars
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+
+# === Env/Secrets ===
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# === Flutter / Mobile ===
+**/build/
+**/.dart_tool/
+**/.flutter-plugins*
+**/.packages
+**/pubspec.lock
+**/ios/Pods/
+**/ios/.symlinks/
+
+# === Python / Backend ===
+**/__pycache__/
+**/.pytest_cache/
+**/.venv/
+venv/
+dist/
+build/
+
+# === OS / Editor ===
+.DS_Store
+.idea/
+.vscode/
