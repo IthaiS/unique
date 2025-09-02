@@ -20,7 +20,7 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final t = (String k, {Map<String, String>? params}) =>
+    String t(String k, {Map<String, String>? params}) =>
         I18n.t(widget.translations, Localizations.localeOf(context), k, params: params);
     return Scaffold(
       appBar: AppBar(title: Text(t('app.title')), actions: [

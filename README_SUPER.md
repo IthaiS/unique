@@ -22,12 +22,12 @@ terraform apply tfplan
 # Export env from TF outputs and sync to GitHub repo secrets/vars (requires `gh auth login`)
 cd ../../..
 ./scripts/write_env_from_tf.sh
-REPO=IthaiS/unique ./scripts/gh_sync_secrets.sh ./foodlabel-ai/infra/.env.ci
+REPO=IthaiS/unique ./scripts/gh_sync_secrets.sh q
 
 # Mobile app
 cd foodlabel-ai/mobile
 ./scripts/bootstrap_mobile.sh
 flutter pub get && flutter test
 # Run pointing to Cloud Run URL from .env.ci (if present)
-flutter run --dart-define=BACKEND_BASE_URL=$(grep BACKEND_BASE_URL ../.env.ci | cut -d= -f2)
+flutter run --dart-define=BACKEND_BASE_URL=$(grep BACKEND_BASE_URL ../infra/.env.ci | cut -d= -f2)
 ```

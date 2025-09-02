@@ -9,7 +9,7 @@ class AssessService {
   static List<String> extractIngredients(String raw) {
     final canon = raw.toLowerCase().replaceAll(RegExp('[\n\r]'), ' ');
     final parts = canon.split(RegExp(r'[;,]')).map((s) => s.trim()).where((s) => s.isNotEmpty).toList();
-    return parts.map((s) => s.replaceAll(RegExp('[^a-z0-9 \-\(\)]'), '')).toList();
+    return parts.map((s) => s.replaceAll(RegExp('[^a-z0-9 -()]'), '')).toList();
   }
 
   static Future<AssessResult> assess(List<String> ingredients) async {
