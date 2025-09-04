@@ -1,27 +1,16 @@
 {
-  "app": {
-    "title": "FoodLabel AI"
-  },
-  "action": {
-    "scan_label": "Scan label"
-  },
-  "label": {
-    "recognized_text": "Recognized text",
-    "ingredients": "Ingredients",
-    "assessment": "Assessment"
-  },
-  "assess": {
-    "verdict": {
-      "safe": "SAFE",
-      "caution": "CAUTION",
-      "avoid": "AVOID"
-    },
-    "score": "Score: {score}"
-  },
-  "reason": {
-    "UNKNOWN": "No specific issues found.",
-    "ALLERGEN_MATCH": "Contains allergen {param}.",
-    "VEGAN_CONFLICT": "Non\u2011vegan ingredient.",
-    "ADDITIVE_FLAG": "Contains additive {param}."
-  }
+  "app":{"title":"FoodLabel AI"},
+  "action":{"scan_label":"Scan label"},
+  "hint":{"mobile_ocr":"On Android/iOS on-device 
+OCR.","desktop_cloud_ocr":"Desktop uses cloud 
+OCR.","windows_cloud_ocr":"Windows: cloud OCR.","macos_cloud_ocr":"macOS: 
+cloud OCR."},
+  "label":{"recognized_text":"Recognized 
+text","ingredients":"Ingredients","assessment":"Assessment"},
+  
+"assess":{"verdict":{"safe":"SAFE","caution":"CAUTION","avoid":"AVOID"},"score":"Score: 
+{score}"},
+  "reason":{"UNKNOWN":"No specific issues.","ALLERGEN_MATCH":"Contains 
+allergen {param}.","VEGAN_CONFLICT":"Non-vegan.","ADDITIVE_FLAG":"Contains 
+additive {param}."}
 }

@@ -1,20 +1,9 @@
 {
   "version": "v1",
   "scoring": {
-    "weights": {
-      "ALLERGEN_MATCH": 40,
-      "ADDITIVE_FLAG": 20,
-      "VEGAN_CONFLICT": 30,
-      "UNKNOWN": 10
-    },
-    "thresholds": {
-      "avoid": 60,
-      "caution": 30
-    }
+    "weights": { "ALLERGEN_MATCH": 40, "ADDITIVE_FLAG": 20, 
+"VEGAN_CONFLICT": 30, "UNKNOWN": 10 },
+    "thresholds": { "avoid": 60, "caution": 30 }
   },
-  "animal_tokens": [
-    "gelatin",
-    "rennet",
-    "cochineal"
-  ]
+  "animal_tokens": ["gelatin","rennet","cochineal"]
 }

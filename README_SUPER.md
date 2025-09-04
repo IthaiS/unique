@@ -1,33 +1,21 @@
-# FoodLabel AI — Full Consolidated Super Pack (v0.9.0)
+# FoodLabel AI – Super Bundle v1.1.1
 
-This archive contains the mobile app, backend, infra (Terraform), GitHub Actions workflows,
-docs, and robust orchestration scripts.
+This repository contains the **entire system** for FoodLabel AI:
+- **Flutter mobile/desktop app** (OCR via ML Kit on Android/iOS, backend OCR via Cloud Vision on Windows/macOS).
+- **FastAPI backend** with `/v1/ocr` (Google Vision API) and `/v1/assess` (ingredient analysis).
+- **Infrastructure as Code** (Terraform) to set up GCP Workload Identity Federation, Cloud Run, Artifact Registry, and Vision API.
+- **GitHub Actions workflows** for CI/CD, infra management, Sentry, and Slack notifications.
+- **Scripts** to bootstrap, sync GitHub secrets, expand bundles, and validate presence of critical files.
+- **Documentation** with setup guides, architecture diagrams, repo structure, and security hardening.
 
-## TL;DR
+---
+
+## Quick Start
+
 ```bash
-unzip foodlabel_ai_SUPER_PACK_CONSOLIDATED_FULL_robust_*.zip -d .
+# Generate full repo locally
+bash make_foodlabel_ai_super_release_v1_1_1.sh
+
+# Bootstrap all scripts and run a self-check
+cd foodlabel-ai-super-v1.1.1
 bash scripts/bootstrap_all.sh
-```
-The bootstrap will: chmod scripts, expand sub-zips, run a self-check, and print next steps.
-
-### Next steps (after bootstrap)
-```bash
-# Provision infra (requires `terraform` and Google Cloud SDK installed)
-cd foodlabel-ai/infra/stack
-cp terraform.tfvars.example terraform.tfvars   # set your project_id etc.
-terraform init -upgrade
-terraform plan -out=tfplan 
-terraform apply tfplan
-
-# Export env from TF outputs and sync to GitHub repo secrets/vars (requires `gh auth login`)
-cd ../../..
-./scripts/write_env_from_tf.sh
-REPO=IthaiS/unique ./scripts/gh_sync_secrets.sh q
-
-# Mobile app
-cd foodlabel-ai/mobile
-./scripts/bootstrap_mobile.sh
-flutter pub get && flutter test
-# Run pointing to Cloud Run URL from .env.ci (if present)
-flutter run --dart-define=BACKEND_BASE_URL=$(grep BACKEND_BASE_URL ../infra/.env.ci | cut -d= -f2)
-```

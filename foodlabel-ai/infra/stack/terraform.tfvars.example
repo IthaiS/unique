@@ -1,4 +1,4 @@
-project_id="sound-paratext-470818-m4"
+project_id="YOUR_GCP_PROJECT_ID"
 region="europe-west1"
 github_repository="IthaiS/unique"
 dev_ref="refs/heads/develop"
