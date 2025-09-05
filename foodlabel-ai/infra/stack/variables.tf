@@ -60,3 +60,9 @@ variable "run_service_name" {
 variable "run_image" {
   type = string
 }
+
+variable "protect_identities" {
+  description = "Protect WIF pool from accidental destroy"
+  type        = bool
+  default     = true
+}
