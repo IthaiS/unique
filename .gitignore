@@ -9,6 +9,17 @@ override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
+*.tfplan
+*.tfplan.*
+crash.log
+.terraform/
+.terraform/*
+*.tfvars.json
+
+# Logs from helper scripts
+plan.*.log
+destroy.*.tfplan
+
 
 # === Env/Secrets ===
 .env
