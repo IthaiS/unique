@@ -59,3 +59,59 @@ APPLY=1 PATCH_GUARDS=1 VARS='-var-file=env/prod.tfvars' ./tf_teardown_guarded.sh
   → Use `PATCH_GUARDS=1`, or set `deletion_protection = false` in your TF for the service, run `terraform apply`, then destroy.
 - **WIF pool has prevent_destroy**: same approach — either keep it, or use `PATCH_GUARDS=1` for a one-time teardown.
 - **Stay safe**: Prefer default guarded mode. Only bypass if you intentionally want a full teardown.
+
+
+# Terraform Cleanup Script
+
+This package provides a helper script to remove **local Terraform clutter** like plan files, logs, and state backups.
+
+## Files
+- `cleanup.sh` — the cleanup script
+
+## What it does
+- Deletes all `*.tfplan` and `*.tfplan.*` files
+- Deletes `destroy.*.tfplan` and `plan.*.log` files
+- Deletes `*.tfstate.backup` files
+- Leaves your main `terraform.tfstate` intact (if using local state)
+- Does **not** touch remote state (e.g., GCS backend)
+
+## Usage
+
+Make the script executable:
+
+```bash
+chmod +x cleanup.sh
+```
+
+Run cleanup:
+
+```bash
+./cleanup.sh
+```
+
+Example output:
+
+```
+🧹 Cleaning Terraform artifacts...
+./plan.dev.log
+./destroy.prod.tfplan
+✔ Cleanup complete!
+```
+
+## Recommendation
+
+Add these patterns to your `.gitignore` so you never commit plan/log files:
+
+```gitignore
+*.tfplan
+*.tfplan.*
+destroy.*.tfplan
+plan.*.log
+*.tfstate
+*.tfstate.*
+.terraform/
+.terraform/*
+```
+
+---
+© 2025 FoodScanner — Terraform Cleanup Utility
