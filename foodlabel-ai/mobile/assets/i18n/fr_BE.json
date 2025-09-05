@@ -1,16 +1,33 @@
 {
-  "app":{"title":"FoodLabel AI"},
-  "action":{"scan_label":"Scanner l’étiquette"},
-  "hint":{"mobile_ocr":"Sur Android/iOS OCR 
-embarqué.","desktop_cloud_ocr":"Bureau utilise l’OCR 
-cloud.","windows_cloud_ocr":"Windows : OCR 
-cloud.","macos_cloud_ocr":"macOS : OCR cloud."},
-  "label":{"recognized_text":"Texte 
-reconnu","ingredients":"Ingrédients","assessment":"Évaluation"},
-  "assess":{"verdict":{"safe":"SÛR","caution":"ATTENTION","avoid":"À 
-ÉVITER"},"score":"Score : {score}"},
-  "reason":{"UNKNOWN":"Aucun problème 
-spécifique.","ALLERGEN_MATCH":"Contient l’allergène 
-{param}.","VEGAN_CONFLICT":"Ingrédient non 
-végétalien.","ADDITIVE_FLAG":"Contient l’additif {param}."}
+  "app": {
+    "title": "FoodLabel AI"
+  },
+  "action": {
+    "scan_label": "Scanner l’étiquette"
+  },
+  "hint": {
+    "mobile_ocr": "Sur Android/iOS OCR embarqué.",
+    "desktop_cloud_ocr": "Bureau utilise l’OCR cloud.",
+    "windows_cloud_ocr": "Windows : OCR cloud.",
+    "macos_cloud_ocr": "macOS : OCR cloud."
+  },
+  "label": {
+    "recognized_text": "Texte reconnu",
+    "ingredients": "Ingrédients",
+    "assessment": "Évaluation"
+  },
+  "assess": {
+    "verdict": {
+      "safe": "SÛR",
+      "caution": "ATTENTION",
+      "avoid": "À ÉVITER"
+    },
+    "score": "Score : {score}"
+  },
+  "reason": {
+    "UNKNOWN": "Aucun problème spécifique.",
+    "ALLERGEN_MATCH": "Contient l’allergène {param}.",
+    "VEGAN_CONFLICT": "Ingrédient non végétalien.",
+    "ADDITIVE_FLAG": "Contient l’additif {param}."
+  }
 }

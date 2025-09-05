@@ -1,0 +1,39 @@
+version: "3.9"
+
+services:
+  api:
+    # Production-like container (no reload)
+    build:
+      context: .
+      target: prod
+      dockerfile: Dockerfile
+    image: foodscanner-api:prod
+    container_name: foodscanner-api
+    environment:
+      # Uncomment and set if you use Google Cloud Vision in prod mode
+      # - GOOGLE_APPLICATION_CREDENTIALS=/app/creds.json
+    # If you need GCP creds inside the container, uncomment the next line and place creds.json in project root
+    # volumes:
+    #   - ./creds.json:/app/creds.json:ro
+    ports:
+      - "8000:8000"
+    command: ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000"]
+    # ^ change module path if your FastAPI app lives elsewhere
+
+  api-dev:
+    # Developer container with hot reload + dev tooling
+    build:
+      context: .
+      target: dev
+      dockerfile: Dockerfile
+    image: foodscanner-api:dev
+    container_name: foodscanner-api-dev
+    environment:
+      # - GOOGLE_APPLICATION_CREDENTIALS=/app/creds.json
+    volumes:
+      - ./backend:/app/backend:rw
+      # - ./creds.json:/app/creds.json:ro
+    ports:
+      - "8000:8000"
+    command: ["uvicorn", "backend.main:app", "--host", "0.0.0.0", "--port", "8000", "--reload"]
+    # ^ change module path if needed

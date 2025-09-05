@@ -17,7 +17,7 @@ class _H extends State<HomePage>{
   String? _raw; List<String> _ings=[]; AssessResult? _res; bool 
 _busy=false;
   @override Widget build(BuildContext ctx){
-    final t=(String k,{Map<String,String>? 
+    String t(String k,{Map<String,String>? 
 params})=>I18n.t(widget.translations, Localizations.localeOf(ctx), k, 
 params: params);
     final isMobile=!kIsWeb&&(Platform.isAndroid||Platform.isIOS);
@@ -30,8 +30,10 @@ if(v=="nl")widget.onLocaleChange(const Locale("nl","BE"));
 if(v=="fr")widget.onLocaleChange(const Locale("fr","BE"));}, 
 itemBuilder:(c)=>const [
         
-PopupMenuItem(value:"en",child:Text("English")),PopupMenuItem(value:"nl",child:Text("Nederlands 
-(BE)")),PopupMenuItem(value:"fr",child:Text("Français (BE)"))])]),
+PopupMenuItem(value:"en",child:Text("English")),
+PopupMenuItem(value:"nl",child:Text("Nederlands (BE)")),
+PopupMenuItem(value:"fr",child:Text("Français (BE)")),
+])]),
       body: Padding(padding: const EdgeInsets.all(16), child: 
 Column(crossAxisAlignment: CrossAxisAlignment.start, children:[
         Text(isMobile ? t("hint.mobile_ocr") : (isWindows ? 
@@ -64,8 +66,9 @@ CrossAxisAlignment.start, children:[
 Theme.of(ctx).textTheme.titleMedium),
             Text(t("assess.verdict.${_res!.verdict}")), 
 Text(t("assess.score", params:{"score": _res!.score.toString()})),
-            const SizedBox(height:8), ..._res!.reasons.map((r)=>Text("• 
-${t("reason.${r[code]}", params:{"param": r[param]??})}"))
+const SizedBox(height:8), ..._res!.reasons.map((r) => Text(
+  "• ${t("reason.${r['code']}", params: {"param": r['param'] ?? ""})}"
+))
           ]))),
         ])),
       ])),

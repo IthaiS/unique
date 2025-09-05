@@ -1,0 +1,29 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.pytest_cache/
+.mypy_cache/
+.pytest_cache/
+.pytype/
+
+# Envs & tooling
+.venv/
+.env
+.env.*
+
+# VCS / OS
+.git/
+.gitignore
+.DS_Store
+
+# Build artifacts
+dist/
+build/
+*.egg-info/
+
+# Caches
+.cache/
+.pyre/
+ruff_cache/

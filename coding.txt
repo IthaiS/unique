@@ -1,0 +1,4 @@
+Read logs
+----------
+ls -l /tmp/foodscanner_uvicorn.log
+cat /tmp/foodscanner_uvicorn.log | tail -n 50

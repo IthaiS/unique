@@ -1,0 +1,100 @@
+{
+  "version": "2.0",
+  "meta": {
+    "name": "FoodScanner Policy",
+    "updated": "2025-09-05",
+    "locale": "en"
+  },
+
+  "normalization": {
+    "lowercase": true,
+    "trim": true,
+    "unicode": "NFKC"
+  },
+
+  "matching": {
+    "mode": "exact", 
+    "fuzzy": false
+  },
+
+  "tokens": {
+    "major_allergens": [
+      "milk", "peanut", "egg", "wheat", "soy", "fish", "shellfish", "tree nut"
+    ],
+
+    "animal_tokens": [
+      "chicken", "beef", "pork", "gelatin", "lard", "fish"
+    ],
+
+    "additives": [
+      { "id": "E951", "names": ["e951", "aspartame"] }
+      // Add more like: { "id": "E621", "names": ["e621", "monosodium glutamate", "msg"] }
+    ],
+
+    "default_unsafe_tokens": [
+      "soap", "detergent", "bleach", "ammonia",
+      "antifreeze", "kerosene", "lamp oil",
+      "machine oil", "motor oil",
+      "sulfuric acid", "hydrochloric acid", "battery acid",
+      "lye", "sodium hydroxide", "drain cleaner",
+      "isopropyl alcohol (non-food-grade)"
+    ],
+
+    "hazardous_chemicals": [
+      "benzalkonium chloride",
+      "chlorine dioxide",
+      "formaldehyde",
+      "ethylene glycol"
+    ],
+
+    "unsafe_allowlist": [
+      "citric acid", "ascorbic acid", "lactic acid", "malic acid",
+      "tartaric acid", "fumaric acid", "acetic acid", "phosphoric acid"
+    ]
+  },
+
+  "patterns": {
+    "deny_patterns": [
+      // Optional regex (Python-style) evaluated AFTER exact matches.
+      // Example: "^(?:lamp|motor|machine) oil$"
+    ],
+    "allow_patterns": [
+      // Optional regex exceptions
+      // Example: "^[a-z]+ acid$"  (NOT recommended unless you tune carefully)
+    ]
+  },
+
+  "overrides": {
+    "hard_avoid_codes": [
+      "DEFAULT_UNSAFE",
+      "HAZARDOUS_CHEM"
+    ],
+    "hard_avoid_tokens": [
+      // Optional explicit tokens that should short-circuit even if not listed above.
+    ]
+  },
+
+  "scoring": {
+    "weights": {
+      "ALLERGEN_MATCH": 5,
+      "VEGAN_CONFLICT": 3,
+      "ADDITIVE_FLAG": 2,
+      "UNKNOWN": 1,
+      "DEFAULT_UNSAFE": 1000,
+      "HAZARDOUS_CHEM": 1000
+    },
+    "thresholds": {
+      "caution": 3,
+      "avoid": 10
+    }
+  },
+
+  "messages": {
+    "ALLERGEN_MATCH": "Contains a major allergen.",
+    "VEGAN_CONFLICT": "Contains animal-derived ingredient.",
+    "ADDITIVE_FLAG": "Contains flagged additive: {param}.",
+    "DEFAULT_UNSAFE": "Contains an inedible/product-safety substance: {param}.",
+    "HAZARDOUS_CHEM": "Contains a hazardous chemical: {param}.",
+    "UNKNOWN": "No specific concerns matched; limited information."
+  }
+}

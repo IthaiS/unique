@@ -7,7 +7,7 @@ locales) async {
     final map=<String, dynamic>{};
     for (final l in locales) {
       final path = l=="en" ? "assets/i18n/en.json" : 
-"assets/i18n/${l}.json";
+"assets/i18n/$l.json";
       final s = await rootBundle.loadString(path);
       map[l] = jsonDecode(s);
     }

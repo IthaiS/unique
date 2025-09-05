@@ -25,19 +25,28 @@ rec.close();
       try{ File(pic.path).deleteSync(); }catch(_){}
       return res.text;
     }
-    if(baseUrl.isEmpty) { throw UnsupportedError("BACKEND_BASE_URL is not 
-set; cloud OCR requires backend."); }
-    final r=await FilePicker.platform.pickFiles(type: FileType.image, 
-allowMultiple:false, withData:true);
-    if(r==null||r.files.isEmpty) return "";
-    final bytes=r.files.first.bytes ?? await 
-File(r.files.first.path!).readAsBytes();
-    final payload=jsonEncode({"image_base64": base64Encode(bytes)});
-    final resp=await http.post(Uri.parse("$baseUrl/v1/ocr"), 
-headers:{"Content-Type":"application/json"}, body:payload);
-    if(resp.statusCode<200||resp.statusCode>=300) { throw Exception("Cloud 
-OCR error: ${resp.statusCode} ${resp.body}"); }
-    final data=jsonDecode(resp.body) as Map<String,dynamic>; return 
-(data["text"] as String?)??"";
+if (baseUrl.isEmpty) {
+  throw UnsupportedError(
+    "BACKEND_BASE_URL is not set, cloud OCR requires backend."
+  );
+}
+final r = await FilePicker.platform.pickFiles(
+  type: FileType.image,
+  allowMultiple: false,
+  withData: true,
+);
+if (r == null || r.files.isEmpty) return "";
+final bytes = r.files.first.bytes ?? await File(r.files.first.path!).readAsBytes();
+final payload = jsonEncode({"image_base64": base64Encode(bytes)});
+final resp = await http.post(
+  Uri.parse("$baseUrl/v1/ocr"),
+  headers: {"Content-Type": "application/json"},
+  body: payload,
+);
+if (resp.statusCode < 200 || resp.statusCode >= 300) {
+  throw Exception("Cloud OCR error: ${resp.statusCode}, ${resp.body}");
+}
+final data = jsonDecode(resp.body) as Map<String, dynamic>;
+return (data["text"] as String?) ?? "";
   }
 }

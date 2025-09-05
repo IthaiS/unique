@@ -37,7 +37,8 @@ body:jsonEncode({"ingredients":ingredients}));
     if(resp.statusCode>=200&&resp.statusCode<300){
       final m=jsonDecode(resp.body); return AssessResult(m["score"] as 
 int, m["verdict"] as String, m["reasons"] as List<dynamic>);
-    } else { throw Exception("Backend error: ${resp.statusCode} 
-${resp.body}"); }
+} else { 
+  throw Exception("Backend error: ${resp.statusCode} ${resp.body}"); 
+}
   }
 }
