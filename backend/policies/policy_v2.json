@@ -2,83 +2,117 @@
   "version": "2.0",
   "meta": {
     "name": "FoodScanner Policy",
-    "updated": "2025-09-05",
+    "updated": "2025-09-06",
     "locale": "en"
   },
-
   "normalization": {
     "lowercase": true,
     "trim": true,
     "unicode": "NFKC"
   },
-
   "matching": {
-    "mode": "exact", 
+    "mode": "exact",
     "fuzzy": false
   },
-
   "tokens": {
     "major_allergens": [
-      "milk", "peanut", "egg", "wheat", "soy", "fish", "shellfish", "tree nut"
+      "milk",
+      "peanut",
+      "egg",
+      "wheat",
+      "soy",
+      "fish",
+      "shellfish",
+      "tree nut",
+      "almond",
+      "hazelnut",
+      "walnut",
+      "cashew",
+      "pistachio",
+      "pecan",
+      "brazil nut",
+      "macadamia",
+      "pine nut",
+      "amandel",
+      "hazelnoot",
+      "walnoot",
+      "cashewnoot",
+      "pistache",
+      "pecannoot",
+      "paranoot",
+      "macadamia",
+      "pijnboompit",
+      "noten"
     ],
-
     "animal_tokens": [
-      "chicken", "beef", "pork", "gelatin", "lard", "fish"
+      "chicken",
+      "beef",
+      "pork",
+      "gelatin",
+      "lard",
+      "fish"
     ],
-
     "additives": [
-      { "id": "E951", "names": ["e951", "aspartame"] }
-      // Add more like: { "id": "E621", "names": ["e621", "monosodium glutamate", "msg"] }
+      {
+        "id": "E951",
+        "names": [
+          "e951",
+          "aspartame"
+        ]
+      }
     ],
-
     "default_unsafe_tokens": [
-      "soap", "detergent", "bleach", "ammonia",
-      "antifreeze", "kerosene", "lamp oil",
-      "machine oil", "motor oil",
-      "sulfuric acid", "hydrochloric acid", "battery acid",
-      "lye", "sodium hydroxide", "drain cleaner",
+      "soap",
+      "detergent",
+      "bleach",
+      "ammonia",
+      "antifreeze",
+      "kerosene",
+      "lamp oil",
+      "machine oil",
+      "motor oil",
+      "sulfuric acid",
+      "hydrochloric acid",
+      "battery acid",
+      "lye",
+      "sodium hydroxide",
+      "drain cleaner",
       "isopropyl alcohol (non-food-grade)"
     ],
-
     "hazardous_chemicals": [
       "benzalkonium chloride",
       "chlorine dioxide",
       "formaldehyde",
       "ethylene glycol"
     ],
-
     "unsafe_allowlist": [
-      "citric acid", "ascorbic acid", "lactic acid", "malic acid",
-      "tartaric acid", "fumaric acid", "acetic acid", "phosphoric acid"
+      "citric acid",
+      "ascorbic acid",
+      "lactic acid",
+      "malic acid",
+      "tartaric acid",
+      "fumaric acid",
+      "acetic acid",
+      "phosphoric acid",
+      "coconut",
+      "kokosnoot"
     ]
   },
-
   "patterns": {
-    "deny_patterns": [
-      // Optional regex (Python-style) evaluated AFTER exact matches.
-      // Example: "^(?:lamp|motor|machine) oil$"
+    "trace_allergen_patterns": [
+      "(?i)may\\s+(also\\s+)?contain\\s+nut[s]?",
+      "(?i)contains?\\s+traces\\s+of\\s+nut[s]?",
+      "(?i)kan\\s+sporen\\s+bevatten\\s+van\\s+noten"
     ],
-    "allow_patterns": [
-      // Optional regex exceptions
-      // Example: "^[a-z]+ acid$"  (NOT recommended unless you tune carefully)
-    ]
+    "deny_patterns": [],
+    "allow_patterns": []
   },
-
-  "overrides": {
-    "hard_avoid_codes": [
-      "DEFAULT_UNSAFE",
-      "HAZARDOUS_CHEM"
-    ],
-    "hard_avoid_tokens": [
-      // Optional explicit tokens that should short-circuit even if not listed above.
-    ]
-  },
-
   "scoring": {
     "weights": {
       "ALLERGEN_MATCH": 5,
       "VEGAN_CONFLICT": 3,
       "ADDITIVE_FLAG": 2,
+      "TRACE_ALLERGEN": 3,
       "UNKNOWN": 1,
       "DEFAULT_UNSAFE": 1000,
       "HAZARDOUS_CHEM": 1000
@@ -88,9 +122,9 @@
       "avoid": 10
     }
   },
-
   "messages": {
     "ALLERGEN_MATCH": "Contains a major allergen.",
+    "TRACE_ALLERGEN": "May contain traces of allergens (cross-contamination risk).",
     "VEGAN_CONFLICT": "Contains animal-derived ingredient.",
     "ADDITIVE_FLAG": "Contains flagged additive: {param}.",
     "DEFAULT_UNSAFE": "Contains an inedible/product-safety substance: {param}.",

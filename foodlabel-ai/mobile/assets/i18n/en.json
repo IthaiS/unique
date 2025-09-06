@@ -29,5 +29,19 @@
     "ALLERGEN_MATCH": "Contains allergen {param}.",
     "VEGAN_CONFLICT": "Non-vegan.",
     "ADDITIVE_FLAG": "Contains additive {param}."
+  },
+  "reasons": {
+    "ALLERGEN_MATCH": "Contains a major allergen.",
+    "TRACE_ALLERGEN": "May contain traces of allergens (cross-contamination risk).",
+    "VEGAN_CONFLICT": "Contains an animal-derived ingredient.",
+    "ADDITIVE_FLAG": "Contains a flagged additive: {param}.",
+    "DEFAULT_UNSAFE": "Contains an inedible/unsafe substance: {param}.",
+    "HAZARDOUS_CHEM": "Contains a hazardous chemical: {param}.",
+    "UNKNOWN": "No specific concerns matched; limited information."
+  },
+  "verdicts": {
+    "safe": "SAFE",
+    "caution": "CAUTION",
+    "avoid": "AVOID"
   }
 }

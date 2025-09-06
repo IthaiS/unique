@@ -1,0 +1,68 @@
+INFO:     Started server process [13552]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:64887 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64893 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64894 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64897 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64898 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64899 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64900 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64903 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64904 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64906 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64910 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64911 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64912 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64913 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64916 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64917 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64918 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64921 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64922 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64923 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64926 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64927 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64928 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64929 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64933 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64934 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64935 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64938 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64939 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64940 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64943 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64944 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64945 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64946 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64949 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64950 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64951 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:64952 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:50808 - "GET / HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:50808 - "GET /favicon.ico HTTP/1.1" 404 Not Found
+INFO:     127.0.0.1:56745 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56745 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:54219 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [13552]
+INFO:     Started server process [13292]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
+INFO:     127.0.0.1:62189 - "GET /health HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59827 - "GET /docs HTTP/1.1" 200 OK
+INFO:     127.0.0.1:59827 - "GET /openapi.json HTTP/1.1" 200 OK
+INFO:     127.0.0.1:55995 - "POST /v1/ocr HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56002 - "POST /v1/assess HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56009 - "POST /v1/ocr HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56016 - "POST /v1/assess HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56019 - "POST /v1/ocr HTTP/1.1" 200 OK
+INFO:     127.0.0.1:56026 - "POST /v1/assess HTTP/1.1" 200 OK
+INFO:     Shutting down
+INFO:     Waiting for application shutdown.
+INFO:     Application shutdown complete.
+INFO:     Finished server process [13292]

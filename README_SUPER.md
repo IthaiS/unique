@@ -159,20 +159,68 @@ HEALTHCHECK --interval=30s --timeout=3s CMD curl -fsS http://localhost:8000/heal
 
 ---
 
-## Or if you are lazy ... 
-### Local
-- backend
-```./run_local.sh
-## Show live logs:
-$ LIVE_LOGS=1 ./run_local.sh
+# Backend: Running FoodScanner API Locally
 
-## Quiet mode (default)
-$ ./run_local.sh
+The `run_local.sh` script bootstraps your backend (creates venv, installs deps, runs tests, starts FastAPI with Uvicorn, performs a health check). It supports **production mode** (default) and **development mode with auto-reload**, plus optional **live log streaming**.
 
-## Custom log file
-$ LOG_FILE=backend/uvicorn.log LIVE_LOGS=1 ./run_local.sh
+## Quick Start
+
+```bash
+# Production (no auto-reload, logs to file)
+./run_local.sh
+
+# Development (auto-reload, logs to file)
+DEV_MODE=1 ./run_local.sh
+
+# Production + live logs streamed to your terminal
+LIVE_LOGS=1 ./run_local.sh
+
+# Development + live logs
+DEV_MODE=1 LIVE_LOGS=1 ./run_local.sh
 ```
-- frontend
+
+## Environment Variables
+
+| Var | Default | Description |
+|-----|---------|-------------|
+| `APP_MODULE` | `backend.api:app` | Uvicorn app import path (`module:attr`) |
+| `HOST` | `127.0.0.1` | Bind host |
+| `PORT` | `8000` | Bind port |
+| `REQUIREMENTS_FILE` | `requirements.txt` | Primary requirements file path (relative to repo root) |
+| `DEV_REQUIREMENTS_FILE` | `requirements-dev.txt` | Dev requirements file path |
+| `VENV_DIR` | `.venv` | Virtualenv directory |
+| `HEALTH_TIMEOUT_SECONDS` | `45` | Per-endpoint health check timeout |
+| `DEV_MODE` | `0` | `1` = start Uvicorn with `--reload` (auto-restart on code changes) |
+| `LIVE_LOGS` | `0` | `1` = stream log file to terminal using `tail -f` |
+| `LOG_FILE` | `/tmp/foodscanner_uvicorn.log` | Uvicorn log file path |
+| `HEALTH_PATHS` | `/health,/docs,/` | Comma-separated list of endpoints to probe for health |
+
+## Health Check
+
+After starting Uvicorn, the script checks each path in `HEALTH_PATHS` against `http://HOST:PORT`. The first 2xx/3xx response marks the server healthy. Example to customize endpoints:
+
+```bash
+HEALTH_PATHS="/health,/v1/health,/openapi.json" ./run_local.sh
+```
+
+## Stopping the Server
+
+The script prints the Uvicorn PID on success. Stop it with:
+
+```bash
+kill <PID>
+```
+
+If you used `LIVE_LOGS=1`, pressing `Ctrl+C` stops the log tailer but **does not** stop the server. Use `kill <PID>` to stop the server process.
+
+## Notes
+
+- The script auto-detects `requirements*.txt` under repo root or `backend/` as a fallback.
+- If `backend/__init__.py` is missing, it will create an empty file to ensure imports work.
+- Tests are run with `pytest -q`; failures will abort the startup.
+
+
+# Fronted: Running The Mobile Flutter App
 ```  
 ## Win
 $ cd ./foodlabel-ai/mobile

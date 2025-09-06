@@ -29,5 +29,19 @@
     "ALLERGEN_MATCH": "Bevat allergeen {param}.",
     "VEGAN_CONFLICT": "Niet-vegan.",
     "ADDITIVE_FLAG": "Bevat additief {param}."
+  },
+  "reasons": {
+    "ALLERGEN_MATCH": "Bevat een belangrijk allergeen.",
+    "TRACE_ALLERGEN": "Kan sporen van allergenen bevatten (kruisbesmettingsrisico).",
+    "VEGAN_CONFLICT": "Bevat een dierlijk ingrediënt.",
+    "ADDITIVE_FLAG": "Bevat een gemarkeerde additief: {param}.",
+    "DEFAULT_UNSAFE": "Bevat een oneetbare/gevaarlijke stof: {param}.",
+    "HAZARDOUS_CHEM": "Bevat een gevaarlijke chemische stof: {param}.",
+    "UNKNOWN": "Geen specifieke zorgen gevonden; beperkte informatie."
+  },
+  "verdicts": {
+    "safe": "VEILIG",
+    "caution": "LET OP",
+    "avoid": "VERMIJDEN"
   }
 }
