@@ -24,17 +24,11 @@
     },
     "score": "Score: {score}"
   },
-  "reason": {
-    "UNKNOWN": "Geen specifieke problemen.",
-    "ALLERGEN_MATCH": "Bevat allergeen {param}.",
-    "VEGAN_CONFLICT": "Niet-vegan.",
-    "ADDITIVE_FLAG": "Bevat additief {param}."
-  },
   "reasons": {
     "ALLERGEN_MATCH": "Bevat een belangrijk allergeen.",
     "TRACE_ALLERGEN": "Kan sporen van allergenen bevatten (kruisbesmettingsrisico).",
-    "VEGAN_CONFLICT": "Bevat een dierlijk ingrediënt.",
-    "ADDITIVE_FLAG": "Bevat een gemarkeerde additief: {param}.",
+    "VEGAN_CONFLICT": "Bevat een ingrediënt van dierlijke oorsprong.",
+    "ADDITIVE_FLAG": "Bevat een gemarkeerd additief: {param}.",
     "DEFAULT_UNSAFE": "Bevat een oneetbare/gevaarlijke stof: {param}.",
     "HAZARDOUS_CHEM": "Bevat een gevaarlijke chemische stof: {param}.",
     "UNKNOWN": "Geen specifieke zorgen gevonden; beperkte informatie."
@@ -43,5 +37,10 @@
     "safe": "VEILIG",
     "caution": "LET OP",
     "avoid": "VERMIJDEN"
+  },
+  "ui": {
+    "score": "Score",
+    "assessment": "Beoordeling",
+    "ingredients": "Ingrediënten"
   }
 }

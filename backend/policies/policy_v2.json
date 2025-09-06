@@ -53,13 +53,7 @@
       "fish"
     ],
     "additives": [
-      {
-        "id": "E951",
-        "names": [
-          "e951",
-          "aspartame"
-        ]
-      }
+      { "id": "E951", "names": ["e951", "aspartame"] }
     ],
     "default_unsafe_tokens": [
       "soap",
@@ -96,7 +90,31 @@
       "phosphoric acid",
       "coconut",
       "kokosnoot"
-    ]
+    ],
+    "synonyms": {
+      "peanut": ["arachide", "arachides", "pinda", "pinda's", "pindas"],
+      "milk": ["lait", "melk"],
+      "egg": ["œuf", "oeuf", "eieren", "ei"],
+      "wheat": ["blé", "tarwe"],
+      "soy": ["soja", "soja-lecithine", "lécithine de soja"],
+      "fish": ["poisson", "vis"],
+      "shellfish": ["crustacés", "schaaldiere", "schaal- en schelpdieren"],
+      "tree nut": [
+        "noten", "noot",
+        "amande", "amandes", "amandel",
+        "noisette", "noisettes", "hazelnoot",
+        "noix", "walnoot",
+        "noix de cajou", "cashewnoot", "cashew",
+        "pistache", "pistachenoot",
+        "noix de pécan", "pecannoot",
+        "noix du Brésil", "paranoot",
+        "macadamia",
+        "pijnboompit", "pijnboompitten", "pignon", "pignons"
+      ],
+      "gelatin": ["gélatine", "gelatine"],
+      "lard": ["saindoux", "reuzel"],
+      "aspartame": ["e951"]
+    }
   },
   "patterns": {
     "trace_allergen_patterns": [
@@ -125,8 +143,8 @@
   "messages": {
     "ALLERGEN_MATCH": "Contains a major allergen.",
     "TRACE_ALLERGEN": "May contain traces of allergens (cross-contamination risk).",
-    "VEGAN_CONFLICT": "Contains animal-derived ingredient.",
-    "ADDITIVE_FLAG": "Contains flagged additive: {param}.",
+    "VEGAN_CONFLICT": "Contains an animal-derived ingredient.",
+    "ADDITIVE_FLAG": "Contains a flagged additive: {param}.",
     "DEFAULT_UNSAFE": "Contains an inedible/product-safety substance: {param}.",
     "HAZARDOUS_CHEM": "Contains a hazardous chemical: {param}.",
     "UNKNOWN": "No specific concerns matched; limited information."

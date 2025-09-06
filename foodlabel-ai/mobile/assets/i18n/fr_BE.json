@@ -30,7 +30,7 @@
     "VEGAN_CONFLICT": "Ingrédient non végétalien.",
     "ADDITIVE_FLAG": "Contient l’additif {param}."
   },
-  "reasons": {
+ "reasons": {
     "ALLERGEN_MATCH": "Contient un allergène majeur.",
     "TRACE_ALLERGEN": "Peut contenir des traces d’allergènes (risque de contamination croisée).",
     "VEGAN_CONFLICT": "Contient un ingrédient d’origine animale.",
@@ -43,5 +43,10 @@
     "safe": "SÛR",
     "caution": "PRUDENCE",
     "avoid": "À ÉVITER"
+  },
+  "ui": {
+    "score": "Score",
+    "assessment": "Évaluation",
+    "ingredients": "Ingrédients"
   }
 }

@@ -43,5 +43,10 @@
     "safe": "SAFE",
     "caution": "CAUTION",
     "avoid": "AVOID"
+  },
+  "ui": {
+    "score": "Score",
+    "assessment": "Assessment",
+    "ingredients": "Ingredients"
   }
 }

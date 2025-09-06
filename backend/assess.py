@@ -89,6 +89,27 @@ def _get_additives(policy: Dict) -> List[Dict]:
 def _get_overrides_tokens(policy: Dict, key: str) -> set:
     return _as_set((policy.get("overrides", {}) or {}).get(key) or [])
 
+def _build_syn_map(policy: Dict) -> Dict[str, str]:
+    """
+    Build {alias -> canonical} from tokens.synonyms in the policy.
+    Canonical keys should be the English/base tokens your rules use.
+    """
+    syn = ((policy.get("tokens") or {}).get("synonyms") or {})
+    rev: Dict[str, str] = {}
+    for canonical, aliases in syn.items():
+        c = _norm(canonical)
+        rev[c] = c  # map canonical to itself
+        for a in aliases or []:
+            rev[_norm(a)] = c
+    return rev
+
+def _apply_synonyms(tokens: List[str], syn_map: Dict[str, str]) -> List[str]:
+    """Replace any alias token with its canonical form if present in the map."""
+    if not syn_map:
+        return tokens
+    return [syn_map.get(_norm(t), t) for t in tokens]
+
+
 # ---------- Sensible defaults ----------
 _DEFAULT_MAJOR_ALLERGENS = {
     "milk", "peanut", "egg", "wheat", "soy", "fish", "shellfish", "tree nut"
@@ -125,6 +146,11 @@ def assess_tokens(tokens: List[str], policy: Dict) -> Tuple[int, str, List[Dict]
     # Normalize per-policy
     toks = _normalize_tokens(tokens, policy)
     toks = [_norm(t) for t in toks if t]
+
+    # --- Synonyms collapse (multilingual -> canonical) ---
+    syn_map = _build_syn_map(policy)
+    if syn_map:
+        toks = _apply_synonyms(toks, syn_map)
 
     # Weights / thresholds
     scoring = policy.get("scoring", {}) or {}
