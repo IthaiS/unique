@@ -1,0 +1,35 @@
+# Keep everything as text and normalize on commit
+* text=auto
+
+# Force LF for source/config (good for CI/macOS/Linux)
+*.sh      text eol=lf
+*.py      text eol=lf
+*.dart    text eol=lf
+*.tf      text eol=lf
+*.yml     text eol=lf
+*.yaml    text eol=lf
+*.json    text eol=lf
+*.md      text eol=lf
+*.toml    text eol=lf
+*.xml     text eol=lf
+*.gradle  text eol=lf
+*.yaml    text eol=lf
+*.sql     text eol=lf
+
+# Windows-only scripts keep CRLF
+*.ps1     text eol=crlf
+*.bat     text eol=crlf
+*.cmd     text eol=crlf
+
+# Binary files (never alter line endings)
+*.png     binary
+*.jpg     binary
+*.jpeg    binary
+*.gif     binary
+*.ico     binary
+*.pdf     binary
+*.aab     binary
+*.apk     binary
+
+# Ignore patch backup files
+*.orig    -text

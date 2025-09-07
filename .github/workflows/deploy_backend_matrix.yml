@@ -1,0 +1,54 @@
+name: Deploy Backend (Dev/Acc/Prod)
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+    paths:
+      - 'backend/**'
+      - '.github/workflows/deploy_backend_matrix.yml'
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        env: [dev, acc, prod]
+    permissions:
+      contents: 'read'
+      id-token: 'write'  # for OIDC / WIF
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Authenticate to Google Cloud (WIF)
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_RUN_SA }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker ${{ secrets.GCP_REGION }}-docker.pkg.dev --quiet
+
+      - name: Build & Push image
+        run: |
+          REGION=${{ secrets.GCP_REGION }}
+          PROJECT=${{ secrets.GCP_PROJECT_ID }}
+          REPO=backend
+          ENV=${{ matrix.env }}
+          IMAGE="${REGION}-docker.pkg.dev/${PROJECT}/${REPO}/backend:${ENV}"
+          docker build -t "$IMAGE" backend
+          docker push "$IMAGE"
+
+      - name: Deploy to Cloud Run
+        run: |
+          REGION=${{ secrets.GCP_REGION }}
+          PROJECT=${{ secrets.GCP_PROJECT_ID }}
+          ENV=${{ matrix.env }}
+          SERVICE="foodlabel-backend-${ENV}"
+          IMAGE="${REGION}-docker.pkg.dev/${PROJECT}/backend/backend:${ENV}"
+          gcloud run deploy "$SERVICE"             --region "$REGION"             --project "$PROJECT"             --image "$IMAGE"             --allow-unauthenticated             --set-env-vars ENV=${ENV},POLICY_FILE=policy_v2.json             --update-secrets JWT_SECRET=jwt-secret-${ENV}:latest,DATABASE_URL=database-url-${ENV}:latest

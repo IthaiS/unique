@@ -20,7 +20,7 @@ def load_policy() -> dict:
     import os, json
     pdir = os.getenv("POLICY_DIR", "backend/policies")
     explicit = os.getenv("POLICY_FILE")
-    candidates = [explicit] if explicit else ["policy_v2.json", "policy_v1.json"]
+    candidates = [explicit] if explicit else ["policy_v2.json"]
     for name in candidates:
         if not name:
             continue

@@ -1,3 +1,12 @@
+## v1.2.0 (Latest)
+- Align versions across repo (root VERSION, Flutter pubspec) → 1.2.0.
+- Make `policy_v2.json` the canonical assessment policy (default via `POLICY_FILE`, fallback order removed in docs).
+- Introduce environment strategy: **Dev / Acc / Prod** with per-env base URLs and secrets.
+- Plan Cloud SQL (Postgres) and Secret Manager integration via Terraform; Cloud Run connects using IAM.
+- CI/CD updates to target Dev/Acc/Prod using GCP Workload Identity Federation.
+- Add `backend/.env.example` and `scripts/write_env_from_tf.sh` usage docs.
+
+
 # Release Notes
 
 ## v1.1.1 (Latest)
