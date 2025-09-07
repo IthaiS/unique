@@ -16,3 +16,17 @@ google-cloud-vision==3.7.3
 # HTTP clients (for external APIs)
 httpx==0.27.2
 requests==2.32.3
+
+# Auth & DB
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+sqlmodel==0.0.16
+alembic==1.13.2
+
+# PostgreSQL driver (choose based on platform)
+psycopg[binary]>=3.1.19
+SQLAlchemy>=2.0
+
+
+alembic==1.13.2
+pydantic[email]==2.9.2

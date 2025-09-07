@@ -7,13 +7,14 @@ This package contains a helper script for safely tearing down your FoodScanner G
 
 ## What it handles
 - **Safe order** for your stack:
-  1. Cloud Run services
-  2. Workload Identity Federation (WIF) service account bindings
-  3. WIF providers
-  4. WIF pool
-  5. Service accounts
-  6. Artifact Registry repository
-  7. Final full destroy (optional)
+  1. Cloud Run backend
+  2. Cloud SQL instance
+  3. WIF service account bindings
+  4. WIF providers
+  5. WIF pool
+  6. Service accounts
+  7. Artifact Registry repository
+  8. Final full destroy
 - Detects **`lifecycle.prevent_destroy = true`** (any resource).
 - Detects **`deletion_protection = true`** (Cloud Run v2 service).
 - By default: **respects** both protections (won’t apply a plan that would fail).
@@ -74,6 +75,23 @@ This package provides a helper script to remove **local Terraform clutter** like
 - Deletes `*.tfstate.backup` files
 - Leaves your main `terraform.tfstate` intact (if using local state)
 - Does **not** touch remote state (e.g., GCS backend)
+
+## Why we keep `.terraform.lock.hcl` and `.terraform/`
+
+This repo **does not delete**:
+
+- `.terraform.lock.hcl`  
+- `.terraform/`  
+
+These files are critical for reproducibility and stability:
+
+- **`.terraform.lock.hcl`**: pins the exact versions of Terraform providers (e.g., Google provider).  
+  Deleting it can cause provider upgrades or incompatibility issues when re-initializing.  
+- **`.terraform/` directory**: stores your initialized backend and downloaded providers.  
+  Removing it will force a fresh init and may break your workflow if versions drift.
+
+By design, `cleanup.sh` only removes *ephemeral* files (plans, logs, state backups), keeping your Terraform environment safe.
+
 
 ## Usage
 

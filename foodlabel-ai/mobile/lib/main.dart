@@ -43,5 +43,16 @@ class _S extends State<FoodLabelApp> {
           GlobalCupertinoLocalizations.delegate
         ],
         home: HomePage(onLocaleChange: _setLocale, translations: _t),
+        initialRoute: '/login',
+        routes: {
+          '/login': (_) => const LoginPage(),
+          '/profiles': (_) => const ProfilesPage(),
+          '/profile_edit': (_) =>
+              const ProfileEditPage(), // pushNamed with args
+        },
+        theme: ThemeData(
+          colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
+          useMaterial3: true,
+        ),
       );
 }

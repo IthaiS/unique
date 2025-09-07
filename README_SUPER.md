@@ -159,68 +159,97 @@ HEALTHCHECK --interval=30s --timeout=3s CMD curl -fsS http://localhost:8000/heal
 
 ---
 
-# Backend: Running FoodScanner API Locally
+# Backend: Running FoodScanner API Locally (Multi-stage, Windows-friendly)
 
-The `run_local.sh` script bootstraps your backend (creates venv, installs deps, runs tests, starts FastAPI with Uvicorn, performs a health check). It supports **production mode** (default) and **development mode with auto-reload**, plus optional **live log streaming**.
+This setup supports **production** and **development** dependency stacks and handles Windows quirks for `psycopg2`.
 
 ## Quick Start
 
 ```bash
-# Production (no auto-reload, logs to file)
+# Production (no auto-reload)
 ./run_local.sh
 
-# Development (auto-reload, logs to file)
+
+# DB local or Prod
+Dev: DEV_MODE=1, SKIP_OCR_LIVE=1, autostarts Docker PG.
+Prod/CI: set DEV_MODE=0 and provide a real DATABASE_URL or DB_*.
+
+
+## Fastlane - confirm the API runs (skip dev tooling) + docker db
+SKIP_DEV_DEPS=1 DEV_MODE=1 LIVE_LOGS=1 ./run_local.sh
+
+## Dev but you already run your own DB (don’t touch Docker):
+SKIP_LOCAL_DB=1 DEV_MODE=1 ./run_local.sh
+
+## Run live OCR test too:
+SKIP_OCR_LIVE=0 DEV_MODE=1 ./run_local.sh
+
+## Skip OCR => Not i the cloud (DB)
+SKIP_OCR_LIVE=1 ./run_local.sh
+
+## Development (auto-reload, still logs to file)
 DEV_MODE=1 ./run_local.sh
 
-# Production + live logs streamed to your terminal
+## Stream logs live in the terminal
 LIVE_LOGS=1 ./run_local.sh
 
-# Development + live logs
+## Stream logs liv eon Development
 DEV_MODE=1 LIVE_LOGS=1 ./run_local.sh
+
+## Skip all: will skip this test without importing backend.api, so it won’t trip over get_session.
+SKIP_DEV_DEPS=1 DEV_MODE=1 LIVE_LOGS=1 SKIP_OCR_LIVE=1 ./run_local.sh
+
+## Live OCR integration:  If/when you want to actually run the live OCR integration, use:
+LIVE_OCR=1 ./run_local.sh
+
+## Prod-ish local: no reload, no Docker meddling
+DEV_MODE=0 ./run_local.sh
+
+
 ```
 
-## Environment Variables
+### Environment variables
 
-| Var | Default | Description |
-|-----|---------|-------------|
-| `APP_MODULE` | `backend.api:app` | Uvicorn app import path (`module:attr`) |
-| `HOST` | `127.0.0.1` | Bind host |
-| `PORT` | `8000` | Bind port |
-| `REQUIREMENTS_FILE` | `requirements.txt` | Primary requirements file path (relative to repo root) |
-| `DEV_REQUIREMENTS_FILE` | `requirements-dev.txt` | Dev requirements file path |
-| `VENV_DIR` | `.venv` | Virtualenv directory |
-| `HEALTH_TIMEOUT_SECONDS` | `45` | Per-endpoint health check timeout |
-| `DEV_MODE` | `0` | `1` = start Uvicorn with `--reload` (auto-restart on code changes) |
-| `LIVE_LOGS` | `0` | `1` = stream log file to terminal using `tail -f` |
-| `LOG_FILE` | `/tmp/foodscanner_uvicorn.log` | Uvicorn log file path |
-| `HEALTH_PATHS` | `/health,/docs,/` | Comma-separated list of endpoints to probe for health |
+- `APP_MODULE` (default `backend.api:app`)
+- `HOST` / `PORT`
+- `POLICY_DIR` / `POLICY_FILE`
+- `JWT_SECRET`, `DB_HOST`, `DB_PORT`, `DB_NAME`, `DB_USER`, `DB_PASS`
+- `DEV_MODE=1` to run uvicorn with `--reload`
+- `LIVE_LOGS=1` to tail the log file live
 
-## Health Check
+If a `.env` file is present at repo root, it will be sourced.
 
-After starting Uvicorn, the script checks each path in `HEALTH_PATHS` against `http://HOST:PORT`. The first 2xx/3xx response marks the server healthy. Example to customize endpoints:
+## Dependency stacks
 
-```bash
-HEALTH_PATHS="/health,/v1/health,/openapi.json" ./run_local.sh
-```
+- `backend/requirements.txt` → **runtime** deps
+  - Uses **environment markers** for Postgres:
+    - `psycopg2-binary` on Windows
+    - `psycopg2` elsewhere
+- `backend/requirements-dev.txt` → **dev** deps
+  - Starts with `-r requirements.txt` to include runtime
+  - Adds `pytest`, `black`, `ruff`, `mypy`, etc.
 
-## Stopping the Server
+On Windows, the script safely rewrites any **standalone** `psycopg2` occurrences in both files to `psycopg2-binary` (without corrupting existing `psycopg2-binary` lines). With our environment markers, this shouldn’t be needed, but it’s there for resilience.
 
-The script prints the Uvicorn PID on success. Stop it with:
+## Health check
 
-```bash
-kill <PID>
-```
+We probe these URLs and accept any 2xx/3xx:
 
-If you used `LIVE_LOGS=1`, pressing `Ctrl+C` stops the log tailer but **does not** stop the server. Use `kill <PID>` to stop the server process.
+- `/health`
+- `/docs`
+- `/`
+
+Failure prints the log file path so you can inspect details.
 
 ## Notes
 
-- The script auto-detects `requirements*.txt` under repo root or `backend/` as a fallback.
-- If `backend/__init__.py` is missing, it will create an empty file to ensure imports work.
-- Tests are run with `pytest -q`; failures will abort the startup.
+- If you use Alembic and have an `alembic.ini`, the script will try to migrate the DB (`alembic upgrade head`) after installing deps.
+- For development UX, combine:
+  ```bash
+  DEV_MODE=1 LIVE_LOGS=1 ./run_local.sh
+  ```
 
-
-# Fronted: Running The Mobile Flutter App
+# Frontend: Running The Mobile Flutter App
 ```  
 ## Win
 $ cd ./foodlabel-ai/mobile

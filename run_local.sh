@@ -1,143 +1,264 @@
 #!/usr/bin/env bash
-# run_local.sh — bootstrap & run FoodScanner API locally
+# run_local.sh
+# Local bootstrap for FoodScanner API:
+# - Loads .env (if present) and exports sane defaults for login+DB
 # - Creates/activates venv
-# - Installs runtime + dev deps
-# - Runs tests
-# - Starts Uvicorn (prod or dev with --reload)
-# - Health check on multiple endpoints
-# - Optional live log streaming
-#
-# Usage:
-#   ./run_local.sh
-#
-# Env vars:
-#   APP_MODULE=backend.api:app
-#   HOST=127.0.0.1
-#   PORT=8000
-#   REQUIREMENTS_FILE=requirements.txt
-#   DEV_REQUIREMENTS_FILE=requirements-dev.txt
-#   VENV_DIR=.venv
-#   HEALTH_TIMEOUT_SECONDS=45
-#   DEV_MODE=0
-#   LIVE_LOGS=0
-#   LOG_FILE=/tmp/foodscanner_uvicorn.log
-#   HEALTH_PATHS=/health,/docs,/
+# - Installs deps (runtime + dev)
+# - Spins up a local Postgres in Docker (DEV only, unless SKIP_LOCAL_DB=1)
+# - Runs tests (skips live OCR by default; toggle via SKIP_OCR_LIVE=0)
+# - (Optional) runs Alembic migrations if present
+# - Starts FastAPI (backend.api:app)
+# - Health check on /health
+# - Optional live logs streaming (LIVE_LOGS=1)
+
+# Make pip deterministic/non-interactive
+export PIP_DISABLE_PIP_VERSION_CHECK=1
+export PIP_NO_INPUT=1
+export PIP_DEFAULT_TIMEOUT="${PIP_DEFAULT_TIMEOUT:-60}"
 
 set -euo pipefail
 
-# ----------------------------
-# Config (with sensible defaults)
-# ----------------------------
+### ----------------------------
+### Config (defaults)
+### ----------------------------
 APP_MODULE="${APP_MODULE:-backend.api:app}"
 HOST="${HOST:-127.0.0.1}"
 PORT="${PORT:-8000}"
-REQUIREMENTS_FILE="${REQUIREMENTS_FILE:-requirements.txt}"
-DEV_REQUIREMENTS_FILE="${DEV_REQUIREMENTS_FILE:-requirements-dev.txt}"
+
+REQUIREMENTS_FILE="${REQUIREMENTS_FILE:-backend/requirements.txt}"
+DEV_REQUIREMENTS_FILE="${DEV_REQUIREMENTS_FILE:-backend/requirements-dev.txt}"
 VENV_DIR="${VENV_DIR:-.venv}"
 HEALTH_TIMEOUT_SECONDS="${HEALTH_TIMEOUT_SECONDS:-45}"
-DEV_MODE="${DEV_MODE:-0}"
-LIVE_LOGS="${LIVE_LOGS:-0}"
 LOG_FILE="${LOG_FILE:-/tmp/foodscanner_uvicorn.log}"
-HEALTH_PATHS="${HEALTH_PATHS:-/health,/docs,/}"
+LIVE_LOGS="${LIVE_LOGS:-0}"
+DEV_MODE="${DEV_MODE:-1}"                 # default dev on local
+SKIP_DEV_DEPS="${SKIP_DEV_DEPS:-0}"       # set to 1 to skip dev deps
 
-BOLD='\033[1m'
-DIM='\033[2m'
-GREEN='\033[32m'
-RED='\033[31m'
-YELLOW='\033[33m'
-RESET='\033[0m'
+# Policy (prefers v2; falls back to v1)
+POLICY_DIR="${POLICY_DIR:-backend/policies}"
+POLICY_FILE="${POLICY_FILE:-policy_v2.json}"
 
+# Auth / DB env for login feature
+JWT_SECRET="${JWT_SECRET:-dev-please-change-me}"
+DB_HOST="${DB_HOST:-localhost}"
+DB_PORT="${DB_PORT:-5432}"
+DB_NAME="${DB_NAME:-foodscanner}"
+DB_USER="${DB_USER:-foodscanner}"
+DB_PASS="${DB_PASS:-dev-password}"
+
+# Local DB controls
+SKIP_LOCAL_DB="${SKIP_LOCAL_DB:-0}"       # set to 1 to not start Docker PG
+PG_IMAGE="${PG_IMAGE:-postgres:16-alpine}"
+PG_CONTAINER="${PG_CONTAINER:-foodscanner-pg}"
+
+# Tests
+SKIP_OCR_LIVE="${SKIP_OCR_LIVE:-1}"       # default skip live OCR
+PYTEST_ADDOPTS="${PYTEST_ADDOPTS:-}"
+
+BOLD='\033[1m'; DIM='\033[2m'; GREEN='\033[32m'; RED='\033[31m'; YELLOW='\033[33m'; RESET='\033[0m'
 step() { echo -e "${BOLD}› $*${RESET}"; }
 info() { echo -e "${DIM}$*${RESET}"; }
 ok()   { echo -e "${GREEN}✔ $*${RESET}"; }
 warn() { echo -e "${YELLOW}⚠ $*${RESET}"; }
 err()  { echo -e "${RED}✖ $*${RESET}"; }
 
-# ----------------------------
-# Helpers
-# ----------------------------
-need_cmd() {
-  if ! command -v "$1" >/dev/null 2>&1; then
-    err "Missing required command: $1"
-    exit 1
-  fi
-}
+need_cmd() { command -v "$1" >/dev/null 2>&1 || { err "Missing required command: $1"; exit 1; }; }
 
 detect_python() {
-  if command -v python >/dev/null 2>&1; then
-    echo "python"
-  elif command -v python3 >/dev/null 2>&1; then
-    echo "python3"
-  else
-    err "Python not found. Please install Python 3.11+"
-    exit 1
-  fi
+  if command -v python >/dev/null 2>&1; then echo "python";
+  elif command -v python3 >/dev/null 2>&1; then echo "python3";
+  else err "Python not found. Please install Python 3.11+"; exit 1; fi
 }
 
 activate_venv() {
-  # POSIX layout
   if [ -f "${VENV_DIR}/bin/activate" ]; then
     # shellcheck disable=SC1090
-    source "${VENV_DIR}/bin/activate"
-    return
+    source "${VENV_DIR}/bin/activate"; return
   fi
-  # Windows venv layout (Git Bash)
   if [ -f "${VENV_DIR}/Scripts/activate" ]; then
     # shellcheck disable=SC1090
-    source "${VENV_DIR}/Scripts/activate"
-    return
+    source "${VENV_DIR}/Scripts/activate"; return
   fi
   err "Unable to find venv activation script in ${VENV_DIR}."
   exit 1
 }
 
 wait_for_http() {
-  local url="$1"
-  local timeout="$2"
-  local start ts code
+  local url="$1" timeout="$2" start ts code
   start="$(date +%s)"
   while :; do
     if code="$(curl -s -o /dev/null -w "%{http_code}" "$url" || true)"; then
-      # consider 2xx/3xx as OK
-      if [[ "$code" =~ ^2[0-9]{2}$ || "$code" =~ ^3[0-9]{2}$ ]]; then
-        return 0
-      fi
+      [[ "$code" =~ ^2[0-9]{2}$ || "$code" =~ ^3[0-9]{2}$ ]] && return 0
     fi
     ts="$(date +%s)"
-    if (( ts - start >= timeout )); then
-      return 1
-    fi
+    (( ts - start >= timeout )) && return 1
     sleep 1
   done
 }
 
 resolve_file() {
   local primary="$1"
-  local fallback_dir="$2"
-  if [ -f "$primary" ]; then
-    echo "$primary"
-  elif [ -f "${fallback_dir}/$(basename "$primary")" ]; then
-    echo "${fallback_dir}/$(basename "$primary")"
-  else
-    echo ""
-  fi
+  if [ -f "$primary" ]; then echo "$primary"
+  elif [ -f "backend/$(basename "$primary")" ]; then echo "backend/$(basename "$primary")"
+  else echo ""; fi
 }
 
-# ----------------------------
-# Pre-flight checks
-# ----------------------------
+is_windows() {
+  case "$(uname -s 2>/dev/null)" in MINGW*|MSYS*|CYGWIN*) return 0 ;; *) return 1 ;; esac
+}
+
+has_docker() {
+  command -v docker >/dev/null 2>&1 || return 1
+  docker info >/dev/null 2>&1 || return 1
+  return 0
+}
+
+start_local_pg() {
+  local cname="${PG_CONTAINER}"
+  if docker ps --format '{{.Names}}' | grep -q "^${cname}$"; then
+    info "Postgres container ${cname} already running."
+    return 0
+  fi
+  if docker ps -a --format '{{.Names}}' | grep -q "^${cname}$"; then
+    step "Starting existing Postgres container ${cname}"
+    docker start "${cname}" >/dev/null
+  else
+    step "Running new Postgres container ${cname} (${PG_IMAGE})"
+    docker run -d --name "${cname}" \
+      -e POSTGRES_DB="${DB_NAME}" \
+      -e POSTGRES_USER="${DB_USER}" \
+      -e POSTGRES_PASSWORD="${DB_PASS}" \
+      -p "${DB_PORT}:5432" \
+      "${PG_IMAGE}" >/dev/null
+  fi
+  ok "Postgres container is up"
+}
+
+wait_for_pg_container() {
+  local cname="${PG_CONTAINER}"
+  step "Waiting for Postgres to become ready"
+  if ! docker exec "${cname}" sh -lc 'for i in $(seq 1 60); do pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB" && exit 0; sleep 1; done; exit 1'; then
+    err "Postgres in container did not become ready within 60s"
+    exit 1
+  fi
+  ok "Postgres is ready"
+}
+
+# Windows reqs massager:
+# - Rebase -r/--requirement paths to absolute (and convert /c/... -> C:/...)
+# - Drop psycopg2 / psycopg2-binary (any pins/markers)
+# - Ensure psycopg[binary] >= 3.1.19 (wheels for Python 3.13)
+prepare_win_requirements() {
+  local in="$1" out="$2"; [[ -z "$in" || ! -f "$in" ]] && return 1
+  local basedir; basedir="$(cd "$(dirname "$in")" && pwd)"
+  awk -v base="$basedir" '
+    function is_abs_win(p) { return (p ~ /^[A-Za-z]:[\/\\]/) }
+    function is_abs_unix(p){ return (p ~ /^\//) }
+    function msys_to_win(p,   drv, rest) {
+      if (p ~ /^\/[A-Za-z]\//) { drv = substr(p,2,1); rest = substr(p,3); return toupper(drv) ":" rest }
+      return p
+    }
+    function abs_path(p,   j) {
+      if (is_abs_win(p) || is_abs_unix(p)) return msys_to_win(p)
+      if (base ~ /\/$/) j = base p; else j = base "/" p
+      return msys_to_win(j)
+    }
+    BEGIN { have_v3 = 0 }
+    {
+      line = $0
+      while (match(line, /(^|[[:space:]])-(r|c)[[:space:]]+([^[:space:]]+)/, m)) {
+        pre=substr(line,1,RSTART-1); inc=m[3]; post=substr(line,RSTART+RLENGTH)
+        line = pre sprintf("%s-%s %s", m[1], m[2], abs_path(inc)) post
+      }
+      while (match(line, /(^|[[:space:]])--(requirement|constraint)[[:space:]]+([^[:space:]]+)/, m2)) {
+        pre2=substr(line,1,RSTART-1); inc2=m2[3]; post2=substr(line,RSTART+RLENGTH)
+        line = pre2 sprintf("%s--%s %s", m2[1], m2[2], abs_path(inc2)) post2
+      }
+      if (line ~ /^[[:space:]]*#/) { print line; next }
+      if (line ~ /\bpsycopg\[binary\]\b/) { have_v3=1; print line; next }
+      if (line ~ /^[[:space:]]*psycopg2(-binary)?([[:space:]]*[=<>!~]{1,2}[^[:space:]]+)?([[:space:]]*;.*)?[[:space:]]*$/) next
+      print line
+    }
+    END { if (!have_v3) print "psycopg[binary]>=3.1.19" }
+  ' "$in" > "$out"
+}
+
+# Return 0 if dev file includes the runtime file (via -r), else 1
+dev_includes_runtime() {
+  local dev="$1" run="$2"
+  [[ -z "$dev" || -z "$run" ]] && return 1
+  local base="$(basename "$run")"
+  grep -Eiq "(^|\s)-r\s+.*${base}" "$dev" && return 0 || true
+  grep -Eiq "(^|\s)--requirement\s+.*${base}" "$dev" && return 0 || true
+  grep -Eiq "(^|\s)-r\s+.*${run}" "$dev" && return 0 || true
+  grep -Eiq "(^|\s)--requirement\s+.*${run}" "$dev" && return 0 || true
+  return 1
+}
+
+pip_install_file() {
+  local label="$1" req="$2"
+  if [[ -z "$req" ]]; then
+    warn "No ${label} requirements file found. Skipping."
+    return 0
+  fi
+  local start end
+  start=$(date +%s)
+  if is_windows; then
+    local tmp; tmp="$(mktemp /tmp/req.win.XXXXXX.txt)"
+    prepare_win_requirements "$req" "$tmp" || { err "Prep Windows req for ${label} failed."; exit 1; }
+    step "Installing ${label} deps from (Windows-adjusted) ${tmp}"
+    python -m pip install --no-input --disable-pip-version-check --progress-bar off -r "$tmp"
+  else
+    step "Installing ${label} deps from ${req}"
+    python -m pip install --no-input --disable-pip-version-check --progress-bar off -r "$req"
+  fi
+  end=$(date +%s)
+  info "${label} deps installed in $((end-start))s"
+}
+
+### ----------------------------
+### Pre-flight
+### ----------------------------
+# Load .env if present
+if [ -f .env ]; then
+  step "Loading .env"
+  # shellcheck disable=SC2046
+  export $(grep -v '^\s*#' .env | sed -E 's/\s*#.*$//' | xargs -0 -I {} sh -c 'echo {}' 2>/dev/null || true)
+fi
+
+# Export critical env (don’t overwrite if .env already set)
+export POLICY_DIR POLICY_FILE JWT_SECRET DB_HOST DB_PORT DB_NAME DB_USER DB_PASS
+export SKIP_OCR_LIVE  # make sure pytest sees it
+
+# Decide DB strategy now
+DB_MODE="sqlite"
+if [[ "$DEV_MODE" = "1" && "$SKIP_LOCAL_DB" != "1" && $(has_docker && echo ok || echo no) = "ok" ]]; then
+  DB_MODE="docker-pg"
+fi
+if [[ "$DB_MODE" = "docker-pg" ]]; then
+  export USE_SQLITE=0
+else
+  export USE_SQLITE=1
+fi
+
 step "Checking required tools"
 need_cmd curl
 PY="$(detect_python)"
 ok "Using $($PY -V 2>&1)"
 
-# Ensure we're running relative to the script location (repo root)
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
+# Print effective env summary (safe subset)
+info "Env summary:
+  APP_MODULE=$APP_MODULE
+  POLICY_DIR=$POLICY_DIR
+  POLICY_FILE=$POLICY_FILE
+  DB_MODE=$DB_MODE  (USE_SQLITE=${USE_SQLITE})
+  DB_HOST=$DB_HOST DB_PORT=$DB_PORT DB_NAME=$DB_NAME DB_USER=$DB_USER
+  JWT_SECRET=${JWT_SECRET:0:4}********
+  DEV_MODE=$DEV_MODE LIVE_LOGS=$LIVE_LOGS SKIP_LOCAL_DB=$SKIP_LOCAL_DB SKIP_OCR_LIVE=$SKIP_OCR_LIVE"
 
-# ----------------------------
-# Create and activate virtual environment
-# ----------------------------
+### ----------------------------
+### Venv
+### ----------------------------
 step "Setting up virtual environment: ${VENV_DIR}"
 if [ ! -d "${VENV_DIR}" ]; then
   "$PY" -m venv "${VENV_DIR}"
@@ -148,117 +269,121 @@ fi
 activate_venv
 ok "Activated venv"
 
-# ----------------------------
-# Upgrade pip/setuptools/wheel
-# ----------------------------
-step "Upgrading pip, setuptools, and wheel"
+step "Upgrading pip tooling"
 pip install --upgrade pip setuptools wheel >/dev/null
 ok "Upgraded packaging tools"
 
 # ----------------------------
-# Install dependencies
+# Dependencies
 # ----------------------------
-step "Resolving requirements files"
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+cd "$SCRIPT_DIR"
+
 REQ_FILE_RESOLVED="$(resolve_file "${REQUIREMENTS_FILE}" "backend")"
 DEV_REQ_FILE_RESOLVED="$(resolve_file "${DEV_REQUIREMENTS_FILE}" "backend")"
 
-step "Installing runtime dependencies from ${REQ_FILE_RESOLVED:-<none>}"
-if [ -n "$REQ_FILE_RESOLVED" ]; then
-  pip install -r "$REQ_FILE_RESOLVED"
-  ok "Runtime dependencies installed"
+if [[ "$SKIP_DEV_DEPS" = "1" ]]; then
+  step "SKIP_DEV_DEPS=1 set — installing runtime only."
+  pip_install_file "runtime" "$REQ_FILE_RESOLVED"
 else
-  warn "No requirements file found (checked: ${REQUIREMENTS_FILE} and backend/$(basename "$REQUIREMENTS_FILE")). Skipping."
+  if [[ -n "$DEV_REQ_FILE_RESOLVED" && -n "$REQ_FILE_RESOLVED" ]] && dev_includes_runtime "$DEV_REQ_FILE_RESOLVED" "$REQ_FILE_RESOLVED"; then
+    step "Dev requirements include runtime (-r). Installing dev only."
+    pip_install_file "dev" "$DEV_REQ_FILE_RESOLVED"
+  else
+    pip_install_file "runtime" "$REQ_FILE_RESOLVED"
+    pip_install_file "dev"     "$DEV_REQ_FILE_RESOLVED"
+  fi
 fi
+ok "Dependencies installed"
 
-step "Installing dev dependencies from ${DEV_REQ_FILE_RESOLVED:-<none>}"
-if [ -n "$DEV_REQ_FILE_RESOLVED" ]; then
-  pip install -r "$DEV_REQ_FILE_RESOLVED"
-  ok "Dev dependencies installed"
-else
-  warn "No dev requirements file found (checked: ${DEV_REQUIREMENTS_FILE} and backend/$(basename "$DEV_REQUIREMENTS_FILE")). Skipping."
-fi
-
-# ----------------------------
-# Ensure backend is a package
-# ----------------------------
+# Ensure backend pkg
 if [ -d "backend" ] && [ ! -f "backend/__init__.py" ]; then
-  step "Creating backend/__init__.py so imports work"
+  step "Creating backend/__init__.py"
   printf "" > backend/__init__.py
   ok "backend/__init__.py created"
 fi
 
-# ----------------------------
-# Run tests
-# ----------------------------
+### ----------------------------
+### Start local Postgres (DEV) via Docker when chosen
+### ----------------------------
+if [[ "$DB_MODE" = "docker-pg" ]]; then
+  need_cmd docker
+  start_local_pg
+  wait_for_pg_container
+else
+  info "Using SQLite (USE_SQLITE=1) — not starting Dockerized Postgres."
+fi
+
+### ----------------------------
+### Tests
+### ----------------------------
 step "Running test suite"
-if ! "$PY" -m pytest -q; then
+# Ensure pytest exists even when dev reqs are slim
+python -m pip show pytest >/dev/null 2>&1 || python -m pip install pytest >/dev/null
+
+# Pass through optional pytest opts
+if ! "$PY" -m pytest -q ${PYTEST_ADDOPTS}; then
   err "Tests failed. Aborting."
   exit 1
 fi
 ok "All tests passed"
 
-# ----------------------------
-# Start server (background)
-# ----------------------------
-step "Starting FastAPI server (${APP_MODULE}) on ${HOST}:${PORT}"
+### ----------------------------
+### Optional DB migration
+### ----------------------------
+if [ -f "alembic.ini" ] && command -v alembic >/dev/null 2>&1; then
+  step "Running Alembic migrations"
+  alembic upgrade head || warn "Alembic failed (continuing)"
+fi
 
-# Truncate log so each run starts fresh
+### ----------------------------
+### Start server
+### ----------------------------
+step "Starting FastAPI server (${APP_MODULE}) on ${HOST}:${PORT}"
 : > "$LOG_FILE"
 
-if [ "$DEV_MODE" = "1" ]; then
-  info "DEV_MODE=1 → uvicorn --reload (auto-reload enabled)"
-  "$PY" -m uvicorn "${APP_MODULE}" --host "${HOST}" --port "${PORT}" --log-level debug --reload >>"$LOG_FILE" 2>&1 &
-else
-  "$PY" -m uvicorn "${APP_MODULE}" --host "${HOST}" --port "${PORT}" --log-level info >>"$LOG_FILE" 2>&1 &
+UVICORN_ARGS=( "${APP_MODULE}" --host "${HOST}" --port "${PORT}" --log-level info )
+if [ "${DEV_MODE}" = "1" ]; then
+  UVICORN_ARGS+=( --reload )
 fi
+
+"$PY" -m uvicorn "${UVICORN_ARGS[@]}" >>"$LOG_FILE" 2>&1 &
 UV_PID=$!
-ok "Uvicorn started with PID ${UV_PID}"
+ok "Uvicorn PID ${UV_PID}"
 info "Logs: ${LOG_FILE}"
 
-# Live logs
 if [ "$LIVE_LOGS" = "1" ]; then
-  info "LIVE_LOGS=1 → streaming logs here (Ctrl+C stops tail, server keeps running)"
+  info "LIVE_LOGS=1 → streaming logs (Ctrl+C stops tail; server keeps running)"
   tail -n +1 -f "$LOG_FILE" &
   TAIL_PID=$!
 fi
 
-# ----------------------------
-# Health check
-# ----------------------------
+### ----------------------------
+### Health check
+### ----------------------------
 API_BASE="http://${HOST}:${PORT}"
+HEALTH_URLS=("${API_BASE}/health" "${API_BASE}/docs" "${API_BASE}/")
 
-# Split comma-separated HEALTH_PATHS into array
-IFS=',' read -r -a HC_PATHS_ARR <<< "$HEALTH_PATHS"
-
-step "Performing health check (timeout per path: ${HEALTH_TIMEOUT_SECONDS}s)"
+step "Health check (timeout: ${HEALTH_TIMEOUT_SECONDS}s)"
 HC_OK=1
-for p in "${HC_PATHS_ARR[@]}"; do
-  url="${API_BASE}${p}"
+for url in "${HEALTH_URLS[@]}"; do
   info "Checking ${url}"
   if wait_for_http "${url}" "${HEALTH_TIMEOUT_SECONDS}"; then
-    ok "Healthy endpoint detected at: ${url}"
+    ok "Healthy: ${url}"
     HC_OK=0
     break
   fi
 done
 
 if [ $HC_OK -ne 0 ]; then
-  err "Health check failed for paths: ${HEALTH_PATHS}"
-  warn "Last 80 lines of log:"
-  tail -n 80 "$LOG_FILE" || true
-  # Keep server running for debugging; uncomment to auto-stop:
-  # kill "${UV_PID}" || true
+  err "Health check failed. See ${LOG_FILE}"
   exit 1
 fi
 
-# ----------------------------
-# Final status
-# ----------------------------
 echo
-echo -e "${GREEN}${BOLD}🎉 The FoodScanner API is UP and RUNNING!${RESET}"
-echo -e "   ${BOLD}Base URL:${RESET} ${API_BASE}"
-echo -e "   ${BOLD}Interactive docs:${RESET} ${API_BASE}/docs"
-echo -e "   ${BOLD}Process PID:${RESET} ${UV_PID}"
-echo -e "   ${BOLD}Logs:${RESET} ${LOG_FILE}"
-echo -e "   ${BOLD}To stop the server:${RESET} kill ${UV_PID}"
+echo -e "${GREEN}${BOLD}🎉 API UP!${RESET}"
+echo -e "   ${BOLD}Base:${RESET} ${API_BASE}"
+echo -e "   ${BOLD}Docs:${RESET} ${API_BASE}/docs"
+echo -e "   ${BOLD}PID :${RESET} ${UV_PID}"
+echo -e "   ${BOLD}Stop:${RESET} kill ${UV_PID}"
 echo
