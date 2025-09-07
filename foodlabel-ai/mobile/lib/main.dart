@@ -1,7 +1,9 @@
 import "package:flutter/material.dart";
 import "package:flutter_localizations/flutter_localizations.dart";
-import "package:foodlabel_ai/src/services/assess_service.dart";
 import "src/pages/home_page.dart";
+import "src/pages/login_page.dart";
+import "src/pages/profile_edit_page.dart";
+import "src/pages/profiles_page.dart";
 import "src/services/i18n.dart";
 
 void main() {
@@ -45,10 +47,9 @@ class _S extends State<FoodLabelApp> {
         home: HomePage(onLocaleChange: _setLocale, translations: _t),
         initialRoute: '/login',
         routes: {
-          '/login': (_) => const LoginPage(),
-          '/profiles': (_) => const ProfilesPage(),
-          '/profile_edit': (_) =>
-              const ProfileEditPage(), // pushNamed with args
+          '/login': (context) => LoginPage(),
+          '/profiles': (context) => ProfilesPage(),
+          '/profile_edit': (context) => ProfileEditPage(),
         },
         theme: ThemeData(
           colorScheme: ColorScheme.fromSeed(seedColor: Colors.green),
