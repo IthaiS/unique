@@ -15,6 +15,6 @@ output "artifact_registry_repository_url" {
 }
 
 output "cloud_run_service_url" {
-  value = google_cloud_run_v2_service.backend[0].uri
+  value       = google_cloud_run_v2_service.backend[0].uri
   description = "URL of the deployed Cloud Run service"
 }

@@ -1,6 +1,7 @@
+from sqlalchemy.orm import Session
+from sqlalchemy import select
 # backend/api_profiles.py
 from fastapi import APIRouter, Depends, HTTPException
-from sqlmodel import Session, select, delete
 from typing import List
 from .db import get_session
 from .models import User, Profile, ProfileAllergen
@@ -18,7 +19,7 @@ def _allowed_allergens() -> set:
 @router.get("", response_model=List[ProfileOut])
 def list_profiles(user: User = Depends(get_current_user),
                   session: Session = Depends(get_session)):
-    rows = session.exec(select(Profile).where(Profile.user_id == user.id)).all()
+    rows = session.execute(select(Profile).where(Profile.user_id == user.id)).scalars().all()
     out: List[ProfileOut] = []
     for p in rows:
         allergens = [pa.allergen for pa in p.allergens]

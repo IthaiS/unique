@@ -12,6 +12,7 @@ class _LoginPageState extends State<LoginPage> {
   final _password = TextEditingController();
   bool _isRegister = false;
   bool _loading = false;
+  bool _rememberDevice = true;
   String? _error;
 
   // Optional owner fields for register
@@ -38,7 +39,8 @@ class _LoginPageState extends State<LoginPage> {
         await AuthService.login(_email.text.trim(), _password.text);
       }
       if (!mounted) return;
-      Navigator.pushReplacementNamed(context, '/profiles');
+      await AuthService.persistRememberChoice(_rememberDevice);
+      Navigator.pushReplacementNamed(context, '/app');
     } catch (e) {
       setState(() {
         _error = e.toString();
@@ -54,8 +56,8 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     final spacing = const SizedBox(height: 12);
-    return Scaffold(
-      appBar: AppBar(title: Text(_isRegister ? 'Register' : 'Login')),
+    return WillPopScope(onWillPop: () async => false, child: Scaffold(
+      appBar: AppBar(automaticallyImplyLeading: false, title: Text(_isRegister ? 'Register' : 'Login')),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 420),
@@ -91,6 +93,12 @@ class _LoginPageState extends State<LoginPage> {
                 if (_error != null)
                   Text(_error!, style: const TextStyle(color: Colors.red)),
                 spacing,
+                CheckboxListTile(
+                  value: _rememberDevice,
+                  onChanged: (v) => setState(() => _rememberDevice = v ?? true),
+                  title: const Text('Remember this device'),
+                  contentPadding: EdgeInsets.zero,
+                ),
                 _loading
                     ? const CircularProgressIndicator()
                     : FilledButton(
@@ -108,6 +116,6 @@ class _LoginPageState extends State<LoginPage> {
           ),
         ),
       ),
-    );
+    ));
   }
 }

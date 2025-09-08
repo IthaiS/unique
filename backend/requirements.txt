@@ -4,7 +4,7 @@ uvicorn[standard]==0.30.6
 starlette==0.40.0
 
 # Data validation
-pydantic==2.9.2
+pydantic[email]==2.9.2
 pydantic-settings==2.5.2
 
 # Image processing
@@ -21,12 +21,11 @@ requests==2.32.3
 python-jose[cryptography]==3.3.0
 passlib[bcrypt]==1.7.4
 sqlmodel==0.0.16
-alembic==1.13.2
 
 # PostgreSQL driver (choose based on platform)
 psycopg[binary]>=3.1.19
-SQLAlchemy>=2.0
+SQLAlchemy==2.0.35
 
 
 alembic==1.13.2
-pydantic[email]==2.9.2
+

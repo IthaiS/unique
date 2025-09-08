@@ -1,0 +1,26 @@
+--- backend/api_auth.py
++++ backend/api_auth.py
+@@ -1,8 +1,7 @@
+-# backend/api_auth.py
+-from fastapi import APIRouter, Depends, HTTPException
+-from sqlmodel import Session, select
+-from sqlalchemy.orm import Session
++from fastapi import APIRouter, Depends, HTTPException
++from sqlalchemy.orm import Session
++from sqlalchemy import select
+ from .db import get_session
+ from .models import User
+ from .auth import hash_password, verify_password, make_token
+@@ -11,7 +10,8 @@
+ router = APIRouter(prefix="/auth", tags=["auth"])
+ 
+ @router.post("/register", response_model=TokenResp)
+ def register(req: RegisterReq, session: Session = Depends(get_session)):
+-    existing = session.exec(select(User).where(User.email == req.email)).first()
++    existing = session.execute(
++        select(User).where(User.email == req.email)
++    ).scalars().first()
+     if existing:
+         raise HTTPException(status_code=400, detail="Email already registered")
+     # ...
+

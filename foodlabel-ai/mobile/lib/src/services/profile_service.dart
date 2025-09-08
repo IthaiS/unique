@@ -47,7 +47,7 @@ class ProfileService {
 
   static Future<List<Profile>> list() async {
     final r = await http.get(Uri.parse("$baseUrl/profiles"),
-        headers: AuthService._authHeaders());
+        headers: AuthService.authHeaders());
     if (r.statusCode ~/ 100 != 2) throw Exception("List profiles failed");
     final arr = jsonDecode(r.body) as List<dynamic>;
     return arr.map((e) => Profile.fromJson(e as Map<String, dynamic>)).toList();
@@ -63,7 +63,7 @@ class ProfileService {
   }) async {
     final r = await http.post(
       Uri.parse("$baseUrl/profiles"),
-      headers: AuthService._authHeaders(),
+      headers: AuthService.authHeaders(),
       body: jsonEncode({
         "name": name,
         "date_of_birth": dob,
@@ -89,7 +89,7 @@ class ProfileService {
   }) async {
     final r = await http.put(
       Uri.parse("$baseUrl/profiles/$id"),
-      headers: AuthService._authHeaders(),
+      headers: AuthService.authHeaders(),
       body: jsonEncode({
         "name": name,
         "date_of_birth": dob,
@@ -105,7 +105,7 @@ class ProfileService {
 
   static Future<void> delete(int id) async {
     final r = await http.delete(Uri.parse("$baseUrl/profiles/$id"),
-        headers: AuthService._authHeaders());
+        headers: AuthService.authHeaders());
     if (r.statusCode ~/ 100 != 2) throw Exception("Delete failed");
   }
 }

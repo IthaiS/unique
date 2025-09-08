@@ -4,10 +4,16 @@ import "src/pages/home_page.dart";
 import "src/pages/login_page.dart";
 import "src/pages/profile_edit_page.dart";
 import "src/pages/profiles_page.dart";
+import "src/pages/settings_page.dart";
+import "src/pages/owner_settings_page.dart";
+import "src/pages/owner_profile_page.dart";
+import "src/app_shell.dart";
 import "src/services/i18n.dart";
+import "src/services/auth_service.dart";
 
-void main() {
+void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  await AuthService.init();
   runApp(const FoodLabelApp());
 }
 
@@ -44,9 +50,13 @@ class _S extends State<FoodLabelApp> {
           GlobalWidgetsLocalizations.delegate,
           GlobalCupertinoLocalizations.delegate
         ],
-        home: HomePage(onLocaleChange: _setLocale, translations: _t),
-        initialRoute: '/login',
+        home: AppShell(onLocaleChange: _setLocale, translations: _t),
+        initialRoute: AuthService.token == null ? '/login' : '/app',
         routes: {
+          '/settings': (context) => const SettingsPage(),
+          '/owner/profile': (context) => const OwnerProfilePage(),
+          '/owner/settings': (context) => const OwnerSettingsPage(),
+          '/app': (context) => AppShell(onLocaleChange: _setLocale, translations: _t),
           '/login': (context) => LoginPage(),
           '/profiles': (context) => ProfilesPage(),
           '/profile_edit': (context) => ProfileEditPage(),

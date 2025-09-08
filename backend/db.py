@@ -56,3 +56,30 @@ def get_session():
         yield db
     finally:
         db.close()
+
+def ensure_schema_if_dev():
+    """
+    Create missing tables in DEV only.
+    Triggered by ENV=dev or DEV_MODE=1 (set by run_local.sh).
+    Safe to call repeatedly.
+    """
+    import os as _os
+    # Only act in dev contexts
+    if _os.getenv("ENV", "dev") != "dev" and _os.getenv("DEV_MODE") != "1":
+        return
+    try:
+        # Prefer SQLAlchemy Declarative Base
+        from .models import Base as _Base  # type: ignore
+        from .db import engine  # self-module ref is fine at runtime
+        _Base.metadata.create_all(bind=engine)
+        return
+    except Exception:
+        pass
+    # Fallback to SQLModel, if used
+    try:
+        from sqlmodel import SQLModel as _SQLModel  # type: ignore
+        from .db import engine
+        _SQLModel.metadata.create_all(engine)
+    except Exception:
+        # Last-resort: do nothing silently in case models/engine aren’t ready
+        pass

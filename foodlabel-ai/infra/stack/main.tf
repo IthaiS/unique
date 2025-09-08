@@ -9,7 +9,7 @@ resource "google_project_service" "apis" {
     "artifactregistry.googleapis.com",
     "secretmanager.googleapis.com",
     "vision.googleapis.com",
-    "sqladmin.googleapis.com",         # <--- added for Cloud SQL
+    "sqladmin.googleapis.com", # <--- added for Cloud SQL
   ])
   project = var.project_id
   service = each.key
@@ -30,10 +30,10 @@ resource "google_iam_workload_identity_pool" "pool" {
 }
 
 resource "google_iam_workload_identity_pool_provider" "dev" {
-  project                             = var.project_id
-  workload_identity_pool_id           = google_iam_workload_identity_pool.pool.workload_identity_pool_id
-  workload_identity_pool_provider_id  = var.provider_dev_id
-  display_name                        = "GitHub provider (dev)"
+  project                            = var.project_id
+  workload_identity_pool_id          = google_iam_workload_identity_pool.pool.workload_identity_pool_id
+  workload_identity_pool_provider_id = var.provider_dev_id
+  display_name                       = "GitHub provider (dev)"
   attribute_mapping = {
     "google.subject"       = "assertion.sub"
     "attribute.repository" = "assertion.repository"
@@ -44,10 +44,10 @@ resource "google_iam_workload_identity_pool_provider" "dev" {
 }
 
 resource "google_iam_workload_identity_pool_provider" "prod" {
-  project                             = var.project_id
-  workload_identity_pool_id           = google_iam_workload_identity_pool.pool.workload_identity_pool_id
-  workload_identity_pool_provider_id  = var.provider_prod_id
-  display_name                        = "GitHub provider (prod)"
+  project                            = var.project_id
+  workload_identity_pool_id          = google_iam_workload_identity_pool.pool.workload_identity_pool_id
+  workload_identity_pool_provider_id = var.provider_prod_id
+  display_name                       = "GitHub provider (prod)"
   attribute_mapping = {
     "google.subject"       = "assertion.sub"
     "attribute.repository" = "assertion.repository"
@@ -115,8 +115,11 @@ resource "random_password" "db_pass" {
 
 resource "google_secret_manager_secret" "db_password" {
   secret_id = "foodscanner-db-password"
-  replication { automatic = true }
+  replication {
+    auto {}
+  }
 }
+
 
 resource "google_secret_manager_secret_version" "db_password_v" {
   secret      = google_secret_manager_secret.db_password.id
@@ -130,7 +133,9 @@ resource "random_password" "jwt_secret" {
 
 resource "google_secret_manager_secret" "jwt_secret" {
   secret_id = "foodscanner-jwt-secret"
-  replication { automatic = true }
+  replication {
+    auto {}
+  }
 }
 
 resource "google_secret_manager_secret_version" "jwt_secret_v" {
@@ -145,8 +150,8 @@ resource "google_sql_database_instance" "pg" {
   region           = var.region
 
   settings {
-    tier               = "db-f1-micro"
-    availability_type  = "ZONAL"
+    tier              = "db-f1-micro"
+    availability_type = "ZONAL"
     ip_configuration {
       ipv4_enabled = true
       authorized_networks {
@@ -157,7 +162,7 @@ resource "google_sql_database_instance" "pg" {
   }
 
   deletion_protection = true
-  depends_on = [google_project_service.apis]
+  depends_on          = [google_project_service.apis]
 }
 
 resource "google_sql_database" "db" {
@@ -192,12 +197,30 @@ resource "google_cloud_run_v2_service" "backend" {
       ports { container_port = 8080 }
 
       # ---------- Plain env (safe values) ----------
-      env { name = "POLICY_DIR"  value = "backend/policies" }
-      env { name = "POLICY_FILE" value = "policy_v2.json" }
-      env { name = "DB_HOST"     value = google_sql_database_instance.pg.public_ip_address }
-      env { name = "DB_PORT"     value = "5432" }
-      env { name = "DB_NAME"     value = var.db_name }
-      env { name = "DB_USER"     value = var.db_user }
+      env {
+        name  = "POLICY_DIR"
+        value = "backend/policies"
+      }
+      env {
+        name  = "POLICY_FILE"
+        value = "policy_v2.json"
+      }
+      env {
+        name  = "DB_HOST"
+        value = google_sql_database_instance.pg.public_ip_address
+      }
+      env {
+        name  = "DB_PORT"
+        value = "5432"
+      }
+      env {
+        name  = "DB_NAME"
+        value = var.db_name
+      }
+      env {
+        name  = "DB_USER"
+        value = var.db_user
+      }
 
       # ---------- Secret-backed env ----------
       env {

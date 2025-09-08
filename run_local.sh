@@ -30,9 +30,13 @@ DEV_REQUIREMENTS_FILE="${DEV_REQUIREMENTS_FILE:-backend/requirements-dev.txt}"
 VENV_DIR="${VENV_DIR:-.venv}"
 HEALTH_TIMEOUT_SECONDS="${HEALTH_TIMEOUT_SECONDS:-45}"
 LOG_FILE="${LOG_FILE:-/tmp/foodscanner_uvicorn.log}"
-LIVE_LOGS="${LIVE_LOGS:-0}"
 DEV_MODE="${DEV_MODE:-1}"                 # default dev on local
 SKIP_DEV_DEPS="${SKIP_DEV_DEPS:-0}"       # set to 1 to skip dev deps
+
+# Dependency logging controls
+DEPS_LOG_FILE="${DEPS_LOG_FILE:-/tmp/foodscanner_deps.log}"
+DEPS_VERBOSE="${DEPS_VERBOSE:-1}"     # 0=silent, 1=verbose (-v), 2=very verbose (-vv)
+LIVE_LOGS="${LIVE_LOGS:-0}"
 
 # Policy (prefers v2; falls back to v1)
 POLICY_DIR="${POLICY_DIR:-backend/policies}"
@@ -104,8 +108,24 @@ resolve_file() {
 }
 
 is_windows() {
-  case "$(uname -s 2>/dev/null)" in MINGW*|MSYS*|CYGWIN*) return 0 ;; *) return 1 ;; esac
+  case "$(uname -s 2>/dev/null)" in
+    MINGW*|MSYS*|CYGWIN*) return 0 ;;
+    *)                     return 1 ;;
+  esac
 }
+
+compute_dep_logs() {
+  PIP_LOG="${DEPS_LOG_FILE:-/tmp/foodscanner_deps.log}"
+  TEE_LOG="${DEPS_LOG_FILE:-/tmp/foodscanner_deps.log}"
+  if is_windows; then
+    command -v cygpath >/dev/null 2>&1 && {
+      PIP_LOG="$(cygpath -w "$PIP_LOG")"  # C:\Users\...\pip_deps.log
+      TEE_LOG="$(cygpath -u "$TEE_LOG")"  # /c/Users/...\pip_deps.log
+    }
+  fi
+  mkdir -p "$(dirname "$TEE_LOG")" 2>/dev/null || true
+}
+
 
 has_docker() {
   command -v docker >/dev/null 2>&1 || return 1
@@ -166,22 +186,43 @@ prepare_win_requirements() {
     BEGIN { have_v3 = 0 }
     {
       line = $0
-      while (match(line, /(^|[[:space:]])-(r|c)[[:space:]]+([^[:space:]]+)/, m)) {
-        pre=substr(line,1,RSTART-1); inc=m[3]; post=substr(line,RSTART+RLENGTH)
-        line = pre sprintf("%s-%s %s", m[1], m[2], abs_path(inc)) post
+
+      # Convert at most ONE short include (-r/-c) per line to avoid infinite loops.
+      # If the include is already absolute, skip rewriting.
+      if (match(line, /(^|[[:space:]])-(r|c)[[:space:]]+([^[:space:]]+)/, m)) {
+        inc = m[3]; abs = abs_path(inc)
+        if (abs != inc) {
+          pre = substr(line, 1, RSTART-1)
+          post = substr(line, RSTART+RLENGTH)
+          line = pre sprintf("%s-%s %s", m[1], m[2], abs) post
+        }
       }
-      while (match(line, /(^|[[:space:]])--(requirement|constraint)[[:space:]]+([^[:space:]]+)/, m2)) {
-        pre2=substr(line,1,RSTART-1); inc2=m2[3]; post2=substr(line,RSTART+RLENGTH)
-        line = pre2 sprintf("%s--%s %s", m2[1], m2[2], abs_path(inc2)) post2
+
+      # Convert at most ONE long include (--requirement/--constraint) per line.
+      if (match(line, /(^|[[:space:]])--(requirement|constraint)[[:space:]]+([^[:space:]]+)/, m2)) {
+        inc2 = m2[3]; abs2 = abs_path(inc2)
+        if (abs2 != inc2) {
+          pre2 = substr(line, 1, RSTART-1)
+          post2 = substr(line, RSTART+RLENGTH)
+          line = pre2 sprintf("%s--%s %s", m2[1], m2[2], abs2) post2
+        }
       }
+
+      # Comments
       if (line ~ /^[[:space:]]*#/) { print line; next }
+
+      # If psycopg[binary] is already present, remember (Python 3.13 wheels).
       if (line ~ /\bpsycopg\[binary\]\b/) { have_v3=1; print line; next }
-      if (line ~ /^[[:space:]]*psycopg2(-binary)?([[:space:]]*[=<>!~]{1,2}[^[:space:]]+)?([[:space:]]*;.*)?[[:space:]]*$/) next
+
+      # Drop any psycopg2 / psycopg2-binary lines (with pins/markers).
+      if (line ~ /^[[:space:]]*psycopg2(-binary)?([[:space:]]*[=<>!~]{1,2}[^[:space:]]+)?([[:space:]]*;.*)?[[:space:]]*$/) { next }
+
       print line
     }
     END { if (!have_v3) print "psycopg[binary]>=3.1.19" }
   ' "$in" > "$out"
 }
+
 
 # Return 0 if dev file includes the runtime file (via -r), else 1
 dev_includes_runtime() {
@@ -201,20 +242,51 @@ pip_install_file() {
     warn "No ${label} requirements file found. Skipping."
     return 0
   fi
-  local start end
+
+  local start end rc verbosity tmp tmp_win
   start=$(date +%s)
+
+  # Verbosity: 0 none, 1 -v, 2 -vv
+  verbosity=""
+  if [[ "${DEPS_VERBOSE:-1}" -ge 2 ]]; then
+    verbosity="-vv"
+  elif [[ "${DEPS_VERBOSE:-1}" -ge 1 ]]; then
+    verbosity="-v"
+  fi
+
+  compute_dep_logs  # sets PIP_LOG and TEE_LOG
+
   if is_windows; then
-    local tmp; tmp="$(mktemp /tmp/req.win.XXXXXX.txt)"
+    # Normalize requirements file for Windows AND convert its path for Windows Python
+    tmp="$(mktemp /tmp/req.win.XXXXXX.txt)"
     prepare_win_requirements "$req" "$tmp" || { err "Prep Windows req for ${label} failed."; exit 1; }
-    step "Installing ${label} deps from (Windows-adjusted) ${tmp}"
-    python -m pip install --no-input --disable-pip-version-check --progress-bar off -r "$tmp"
+    tmp_win="$tmp"
+    command -v cygpath >/dev/null 2>&1 && tmp_win="$(cygpath -w "$tmp")"
+
+    step "Installing ${label} deps from (Windows-adjusted) ${tmp_win}"
+    info "pip log → ${PIP_LOG}"
+    info "stream  → ${TEE_LOG}"
+    "$PY" -m pip install ${verbosity} --no-input --disable-pip-version-check --progress-bar off \
+      --log "$PIP_LOG" -r "$tmp_win" 2>&1 | tee -a "$TEE_LOG"
   else
     step "Installing ${label} deps from ${req}"
-    python -m pip install --no-input --disable-pip-version-check --progress-bar off -r "$req"
+    info "pip log → ${PIP_LOG}"
+    info "stream  → ${TEE_LOG}"
+    "$PY" -m pip install ${verbosity} --no-input --disable-pip-version-check --progress-bar off \
+      --log "$PIP_LOG" -r "$req" 2>&1 | tee -a "$TEE_LOG"
   fi
+
+  rc=${PIPESTATUS[0]}  # exit code of pip (first cmd in the pipe)
   end=$(date +%s)
+  if (( rc != 0 )); then
+    err "pip install for ${label} failed (rc=${rc}). Last 50 lines:"
+    ( tail -n 50 "$TEE_LOG" 2>/dev/null || tail -n 50 "$PIP_LOG" 2>/dev/null || true )
+    exit "$rc"
+  fi
   info "${label} deps installed in $((end-start))s"
 }
+
+
 
 ### ----------------------------
 ### Pre-flight
@@ -254,7 +326,9 @@ info "Env summary:
   DB_MODE=$DB_MODE  (USE_SQLITE=${USE_SQLITE})
   DB_HOST=$DB_HOST DB_PORT=$DB_PORT DB_NAME=$DB_NAME DB_USER=$DB_USER
   JWT_SECRET=${JWT_SECRET:0:4}********
-  DEV_MODE=$DEV_MODE LIVE_LOGS=$LIVE_LOGS SKIP_LOCAL_DB=$SKIP_LOCAL_DB SKIP_OCR_LIVE=$SKIP_OCR_LIVE"
+  DEV_MODE=$DEV_MODE LIVE_LOGS=$LIVE_LOGS SKIP_LOCAL_DB=$SKIP_LOCAL_DB SKIP_OCR_LIVE=$SKIP_OCR_LIVE
+  DEPS_LOG_FILE=$DEPS_LOG_FILE
+  LOG_FILE=$LOG_FILE"
 
 ### ----------------------------
 ### Venv
@@ -270,8 +344,32 @@ activate_venv
 ok "Activated venv"
 
 step "Upgrading pip tooling"
-pip install --upgrade pip setuptools wheel >/dev/null
-ok "Upgraded packaging tools"
+compute_dep_logs
+"$PY" -m pip install -U pip setuptools wheel --disable-pip-version-check \
+  --log "$PIP_LOG" 2>&1 | tee -a "$TEE_LOG"
+ok "Upgraded packaging tools (logs → $TEE_LOG)"
+
+step "Ensuring SQLAlchemy runtime"
+if ! "$PY" - <<'PY' >/dev/null 2>&1
+import importlib
+importlib.import_module("sqlalchemy")
+PY
+then
+  info "Installing SQLAlchemy (not found)"
+  "$PY" -m pip install "SQLAlchemy>=2.0,<3.0" >/dev/null || "$PY" -m pip install "SQLAlchemy>=2.0,<3.0"
+else
+  info "SQLAlchemy already present"
+fi
+
+# Pin so future installs keep it
+if ! grep -iq '^sqlalchemy' backend/requirements.txt; then
+  info "Pinning SQLAlchemy==2.0.35 in backend/requirements.txt"
+  printf '\nSQLAlchemy==2.0.35\n' >> backend/requirements.txt
+fi
+ok "SQLAlchemy ready"
+
+
+
 
 # ----------------------------
 # Dependencies
