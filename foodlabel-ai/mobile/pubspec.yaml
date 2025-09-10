@@ -1,7 +1,7 @@
 name: foodlabel_ai
 description: Scan food labels, extract ingredients, assess with AI.
 publish_to: "none"
-version: 1.2.0+120
+version: 1.2.1+1
 environment:
   sdk: ">=3.3.0 <4.0.0"
 dependencies:
