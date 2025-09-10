@@ -1,45 +1,83 @@
 name: Infra Stack (Terraform)
+
 on:
   push:
-    branches: [main, develop]
-    paths: ["foodlabel-ai/infra/stack/**"]
+    branches:
+      - main
+      - develop
+    paths:
+      - "foodlabel-ai/infra/stack/**"
+      - ".github/workflows/infra_stack_apply.yml"
   workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: infra-stack-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  TF_WORKDIR: foodlabel-ai/infra/stack
+  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  WIF_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+  WIF_SA_EMAIL: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+
 jobs:
   plan-apply:
     runs-on: ubuntu-latest
-    permissions: { id-token: write, contents: read }
-    env:
-      TF_WORKDIR: foodlabel-ai/infra/stack
-      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-      WIF_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-      WIF_SA_EMAIL: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Authenticate to GCP via OIDC (Workload Identity Federation)
       - name: Auth (WIF - SHARED)
         if: ${{ env.WIF_PROVIDER != '' && env.WIF_SA_EMAIL != '' }}
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ env.WIF_PROVIDER }}
           service_account: ${{ env.WIF_SA_EMAIL }}
+
       - name: Fail if no WIF secrets
         if: ${{ env.WIF_PROVIDER == '' || env.WIF_SA_EMAIL == '' }}
-        run: echo '::error::Missing shared WIF secrets' && exit 1
-      - uses: google-github-actions/setup-gcloud@v2
-        with: { project_id: ${{ env.GCP_PROJECT_ID }} }
-      - uses: hashicorp/setup-terraform@v3
-        with: { terraform_version: 1.6.5 }
+        run: |
+          echo "::error::Missing shared WIF secrets (GCP_WORKLOAD_IDENTITY_PROVIDER / GCP_SERVICE_ACCOUNT_EMAIL)"
+          exit 1
+
+      - name: Setup gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.6.5
+
       - name: Terraform Init
         working-directory: ${{ env.TF_WORKDIR }}
         run: terraform init -upgrade
+
       - name: Terraform Plan
         id: plan
         working-directory: ${{ env.TF_WORKDIR }}
+        shell: bash
         run: |
+          set -euo pipefail
+          # Optional but nice to have; don't fail the job on formatting diffs
+          terraform fmt -check -diff || true
           set +e
-          terraform plan -detailed-exitcode -out=tfplan
-          echo "exitcode=$?" >> "$GITHUB_OUTPUT"
+          terraform plan -input=false -detailed-exitcode -out=tfplan
+          code=$?
+          echo "exitcode=${code}" >> "$GITHUB_OUTPUT"
+          if [ "$code" -eq 1 ]; then
+            echo "::error::Terraform plan failed"
+            exit 1
+          fi
           exit 0
-      - name: Apply if changes
-        if: steps.plan.outputs.exitcode == '2'
+
+      - name: Terraform Apply (changes detected)
+        if: ${{ steps.plan.outputs.exitcode == '2' }}
         working-directory: ${{ env.TF_WORKDIR }}
         run: terraform apply -auto-approve tfplan
