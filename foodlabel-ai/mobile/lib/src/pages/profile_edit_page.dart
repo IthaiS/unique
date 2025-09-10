@@ -1,40 +1,54 @@
 import 'package:flutter/material.dart';
 import '../services/profile_service.dart';
+import '../models/profile.dart' as models;
 
 class ProfileEditPage extends StatefulWidget {
   const ProfileEditPage({super.key});
+
   @override
   State<ProfileEditPage> createState() => _ProfileEditPageState();
 }
 
 class _ProfileEditPageState extends State<ProfileEditPage> {
   final _name = TextEditingController();
-  final _dob = TextEditingController(); // YYYY-MM-DD string for simplicity
+  final _dob = TextEditingController(); // YYYY-MM-DD
   final _gender = TextEditingController();
   final _state = TextEditingController();
   final _country = TextEditingController();
 
-  Set<String> _selected = {};
-  List<String> _allowlist = [];
+  final Set<String> _selected = <String>{};
+  List<String> _allowlist = <String>[];
   bool _loading = true;
   String? _error;
   int? _editingId;
+  bool _hydratedFromArgs = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _fetchAllowlist();
+  }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final args = ModalRoute.of(context)!.settings.arguments;
-    final editing = args is Profile ? args : null;
-    if (editing != null && _editingId == null) {
+    // Hydrate once from route args (if provided)
+    if (_hydratedFromArgs) return;
+    final args = ModalRoute.of(context)?.settings.arguments;
+    final models.Profile? editing =
+        (args is models.Profile) ? args : null; // <- use aliased model
+    if (editing != null) {
       _editingId = editing.id;
       _name.text = editing.name;
       _dob.text = editing.dob ?? '';
       _gender.text = editing.gender ?? '';
       _state.text = editing.state ?? '';
       _country.text = editing.country ?? '';
-      _selected = editing.allergens.toSet();
+      _selected
+        ..clear()
+        ..addAll(editing.allergens);
     }
-    _fetchAllowlist();
+    _hydratedFromArgs = true;
   }
 
   Future<void> _fetchAllowlist() async {
@@ -52,10 +66,9 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
         _error = e.toString();
       });
     } finally {
-      if (mounted)
-        setState(() {
-          _loading = false;
-        });
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
   }
 
@@ -88,23 +101,32 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
       if (!mounted) return;
       Navigator.pop(context, true);
     } catch (e) {
-      setState(() {
-        _error = e.toString();
-      });
+      setState(() => _error = e.toString());
     } finally {
-      if (mounted)
-        setState(() {
-          _loading = false;
-        });
+      if (mounted) {
+        setState(() => _loading = false);
+      }
     }
+  }
+
+  @override
+  void dispose() {
+    _name.dispose();
+    _dob.dispose();
+    _gender.dispose();
+    _state.dispose();
+    _country.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final spacing = const SizedBox(height: 12);
+
     return Scaffold(
       appBar: AppBar(
-          title: Text(_editingId == null ? 'New profile' : 'Edit profile')),
+        title: Text(_editingId == null ? 'New profile' : 'Edit profile'),
+      ),
       body: _loading && _allowlist.isEmpty
           ? const Center(child: CircularProgressIndicator())
           : SingleChildScrollView(
@@ -112,31 +134,40 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
               child: Column(
                 children: [
                   TextField(
-                      controller: _name,
-                      decoration: const InputDecoration(labelText: 'Name')),
+                    controller: _name,
+                    decoration: const InputDecoration(labelText: 'Name'),
+                  ),
                   spacing,
                   TextField(
-                      controller: _dob,
-                      decoration: const InputDecoration(
-                          labelText: 'Date of birth (YYYY-MM-DD)')),
+                    controller: _dob,
+                    decoration: const InputDecoration(
+                      labelText: 'Date of birth (YYYY-MM-DD)',
+                    ),
+                  ),
                   spacing,
                   TextField(
-                      controller: _gender,
-                      decoration: const InputDecoration(labelText: 'Gender')),
+                    controller: _gender,
+                    decoration: const InputDecoration(labelText: 'Gender'),
+                  ),
                   spacing,
                   TextField(
-                      controller: _state,
-                      decoration:
-                          const InputDecoration(labelText: 'State/Province')),
+                    controller: _state,
+                    decoration: const InputDecoration(
+                      labelText: 'State/Province',
+                    ),
+                  ),
                   spacing,
                   TextField(
-                      controller: _country,
-                      decoration: const InputDecoration(labelText: 'Country')),
+                    controller: _country,
+                    decoration: const InputDecoration(labelText: 'Country'),
+                  ),
                   spacing,
                   const Align(
                     alignment: Alignment.centerLeft,
-                    child: Text('Allergens (from policy)',
-                        style: TextStyle(fontWeight: FontWeight.bold)),
+                    child: Text(
+                      'Allergens (from policy)',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
                   ),
                   const SizedBox(height: 8),
                   Wrap(
@@ -149,10 +180,11 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                         selected: sel,
                         onSelected: (v) {
                           setState(() {
-                            if (v)
+                            if (v) {
                               _selected.add(a);
-                            else
+                            } else {
                               _selected.remove(a);
+                            }
                           });
                         },
                       );
@@ -168,9 +200,11 @@ class _ProfileEditPageState extends State<ProfileEditPage> {
                       Expanded(
                         child: FilledButton(
                           onPressed: _loading ? null : _save,
-                          child: Text(_editingId == null
-                              ? 'Create profile'
-                              : 'Save changes'),
+                          child: Text(
+                            _editingId == null
+                                ? 'Create profile'
+                                : 'Save changes',
+                          ),
                         ),
                       ),
                     ],

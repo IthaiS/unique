@@ -2,6 +2,8 @@
 from typing import Optional, List
 from sqlmodel import SQLModel, Field, Relationship
 from datetime import date
+from sqlalchemy import Column, Integer, String, ForeignKey, UniqueConstraint
+from sqlalchemy.orm import relationship
 
 class ProfileAllergen(SQLModel, table=True):
     profile_id: int = Field(foreign_key="profile.id", primary_key=True)

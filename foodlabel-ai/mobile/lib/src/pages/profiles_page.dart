@@ -1,6 +1,7 @@
 // foodlabel-ai/mobile/lib/src/pages/profiles_page.dart
 import 'package:flutter/material.dart';
 import '../services/profile_service.dart';
+import "../models/profile.dart";
 
 class ProfilesPage extends StatefulWidget {
   const ProfilesPage({super.key});

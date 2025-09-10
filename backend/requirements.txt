@@ -6,6 +6,8 @@ starlette==0.40.0
 # Data validation
 pydantic[email]==2.9.2
 pydantic-settings==2.5.2
+email-validator>=2
+
 
 # Image processing
 Pillow==11.0.0

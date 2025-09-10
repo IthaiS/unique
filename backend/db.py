@@ -17,6 +17,17 @@ def _make_url() -> str:
 
 DATABASE_URL = _make_url()
 
+_is_sqlite = DATABASE_URL.startswith("sqlite")
+
+engine = create_engine(
+    DATABASE_URL,
+    pool_pre_ping=True,
+    pool_recycle=1800,
+    future=True,
+    **({"connect_args": {"check_same_thread": False}} if _is_sqlite else {}),
+)
+
+
 engine = create_engine(
     DATABASE_URL,
     pool_pre_ping=True,
@@ -57,29 +68,34 @@ def get_session():
     finally:
         db.close()
 
-def ensure_schema_if_dev():
+def ensure_schema_if_dev() -> None:
     """
-    Create missing tables in DEV only.
-    Triggered by ENV=dev or DEV_MODE=1 (set by run_local.sh).
+    Create missing tables in DEV/TEST or whenever using SQLite.
     Safe to call repeatedly.
     """
     import os as _os
-    # Only act in dev contexts
-    if _os.getenv("ENV", "dev") != "dev" and _os.getenv("DEV_MODE") != "1":
+    from .db import engine  # re-import is fine
+
+    env = _os.getenv("ENV", "dev")
+    dev_mode = _os.getenv("DEV_MODE") == "1"
+    is_sqlite = getattr(engine, "dialect", None) and engine.dialect.name == "sqlite"
+
+    # Only act in dev, test, explicitly forced, or when using SQLite (typical for local/test).
+    if not (env in ("dev", "test") or dev_mode or is_sqlite):
         return
+
+    # Prefer SQLAlchemy Declarative Base (your models.py defines Base)
     try:
-        # Prefer SQLAlchemy Declarative Base
-        from .models import Base as _Base  # type: ignore
-        from .db import engine  # self-module ref is fine at runtime
+        from .models import Base as _Base  # registers all tables
         _Base.metadata.create_all(bind=engine)
         return
     except Exception:
         pass
-    # Fallback to SQLModel, if used
+
+    # Fallback to SQLModel if ever used
     try:
         from sqlmodel import SQLModel as _SQLModel  # type: ignore
-        from .db import engine
         _SQLModel.metadata.create_all(engine)
     except Exception:
-        # Last-resort: do nothing silently in case models/engine aren’t ready
+        # Last resort: do nothing silently
         pass

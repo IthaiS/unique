@@ -43,25 +43,40 @@ def me(user: User = Depends(get_current_user)):
     )
 
 @router.put("/me", response_model=AccountResp)
-def update_me(req: AccountUpdateReq, user: User = Depends(get_current_user),
-              session: Session = Depends(get_session)):
+def update_me(
+    req: AccountUpdateReq, 
+    user: User = Depends(get_current_user),
+    session: Session = Depends(get_session)
+    ):
+
+     # EMAIL (optional)
+    if req.email is not None and req.email != user.email:
+        existing = session.execute(
+            select(User).where(User.email == req.email)
+        ).scalars().first()
+        if existing and existing.id != user.id:
+            raise HTTPException(409, "Email already registered")
+        user.email = req.email
+
     if req.owner_name is not None:
         user.owner_name = req.owner_name
     if req.state_province is not None:
         user.state_province = req.state_province
     if req.country is not None:
         user.country = req.country
+
     session.add(user)
     session.commit()
     session.refresh(user)
+
     return AccountResp(
-        id=user.id, email=user.email,
+        id=user.id, 
+        email=user.email,
         owner_name=user.owner_name,
         state_province=user.state_province,
         country=user.country
     )
 
-@router.get("/auth/ping")
+@router.get("/ping")
 def auth_ping(db: Session = Depends(get_session)):
-    # use db here
     return {"ok": True}

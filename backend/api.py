@@ -1,4 +1,5 @@
 # backend/api.py
+from . import models  # ensures metadata is loaded
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 import logging

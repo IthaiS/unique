@@ -1,12 +1,13 @@
 name: Flutter CI (Tests / Lints)
 on:
   push:
-    branches: [main]
+    branches: [main, develop]
+    tags: ["v*"]
     paths:
       - "foodlabel-ai/mobile/**"
       - ".github/workflows/flutter_ci.yml"
   pull_request:
-    branches: [main]
+    branches: [main, develop]
     paths:
       - "foodlabel-ai/mobile/**"
 jobs:
