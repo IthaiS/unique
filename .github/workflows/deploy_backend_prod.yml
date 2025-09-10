@@ -19,17 +19,7 @@ jobs:
     permissions:
       id-token: write
       contents: read
-    # If you use environment-scoped secrets for prod, keep this:
     environment: prod
-    env:
-      REGION: ${{ vars.GCP_REGION }}
-      SERVICE_NAME: ${{ vars.CLOUD_RUN_SERVICE }}
-      SERVICE_SUFFIX: ""
-      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-      WIF_PROVIDER_PROD: ${{ secrets.GCP_WIF_PROVIDER_PROD }}
-      WIF_SA_PROD: ${{ secrets.GCP_SA_PROD }}
-      WIF_PROVIDER_SHARED: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-      WIF_SA_SHARED: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
 
     steps:
       - uses: actions/checkout@v4
@@ -37,15 +27,25 @@ jobs:
       - id: ver
         run: echo "version=$(tr -d '\n\r' < VERSION)" >> "$GITHUB_OUTPUT"
 
-      - name: Vars
+      - name: Resolve config
         run: |
-          REGION="${REGION:-europe-west1}"
-          SERVICE_NAME="${SERVICE_NAME:-foodlabel-backend}"
-          echo "REGION=$REGION" >> $GITHUB_ENV
-          echo "SERVICE_NAME=$SERVICE_NAME" >> $GITHUB_ENV
-          echo "SERVICE_SUFFIX=${SERVICE_SUFFIX}" >> $GITHUB_ENV
+          echo "REGION=${{ vars.GCP_REGION }}" >> $GITHUB_ENV
+          echo "SERVICE_NAME=${{ vars.CLOUD_RUN_SERVICE }}" >> $GITHUB_ENV
+          echo "SERVICE_SUFFIX=" >> $GITHUB_ENV
+          echo "GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}" >> $GITHUB_ENV
+          echo "WIF_PROVIDER_PROD=${{ secrets.GCP_WIF_PROVIDER_PROD }}" >> $GITHUB_ENV
+          echo "WIF_SA_PROD=${{ secrets.GCP_SA_PROD }}" >> $GITHUB_ENV
+          echo "WIF_PROVIDER_SHARED=${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}" >> $GITHUB_ENV
+          echo "WIF_SA_SHARED=${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}" >> $GITHUB_ENV
           echo "VERSION=${{ steps.ver.outputs.version }}" >> $GITHUB_ENV
           echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
+
+      - name: Apply defaults
+        run: |
+          : "${REGION:=europe-west1}"
+          : "${SERVICE_NAME:=foodlabel-backend}"
+          echo "REGION=$REGION" >> $GITHUB_ENV
+          echo "SERVICE_NAME=$SERVICE_NAME" >> $GITHUB_ENV
           echo "AR_IMAGE=${REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/foodlabel-repo/${SERVICE_NAME}" >> $GITHUB_ENV
 
       - name: Auth (PROD)
@@ -55,7 +55,7 @@ jobs:
           workload_identity_provider: ${{ env.WIF_PROVIDER_PROD }}
           service_account: ${{ env.WIF_SA_PROD }}
 
-      - name: Auth (SHARED)
+      - name: Auth (SHARED fallback)
         if: ${{ (env.WIF_PROVIDER_PROD == '' || env.WIF_SA_PROD == '') && env.WIF_PROVIDER_SHARED != '' && env.WIF_SA_SHARED != '' }}
         uses: google-github-actions/auth@v2
         with:

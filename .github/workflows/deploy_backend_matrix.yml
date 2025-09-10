@@ -17,17 +17,24 @@ jobs:
     permissions:
       contents: read
       id-token: write
-    # If you keep environment-level secrets per env, this exposes the right ones:
     environment: ${{ matrix.env }}
-    env:
-      REGION: ${{ vars.GCP_REGION }}
-      PROJECT: ${{ secrets.GCP_PROJECT_ID }}
-      WIF_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-      WIF_SA: ${{ secrets.GCP_RUN_SA }}
-      REPO: backend
 
     steps:
       - uses: actions/checkout@v4
+
+      - name: Resolve config
+        run: |
+          echo "ENV=${{ matrix.env }}" >> $GITHUB_ENV
+          echo "REGION=${{ vars.GCP_REGION }}" >> $GITHUB_ENV
+          echo "PROJECT=${{ secrets.GCP_PROJECT_ID }}" >> $GITHUB_ENV
+          echo "WIF_PROVIDER=${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}" >> $GITHUB_ENV
+          echo "WIF_SA=${{ secrets.GCP_RUN_SA }}" >> $GITHUB_ENV
+          echo "REPO=backend" >> $GITHUB_ENV
+
+      - name: Apply defaults
+        run: |
+          : "${REGION:=europe-west1}"
+          echo "REGION=$REGION" >> $GITHUB_ENV
 
       - name: Authenticate to Google Cloud (WIF)
         uses: google-github-actions/auth@v2
@@ -41,19 +48,16 @@ jobs:
           project_id: ${{ env.PROJECT }}
 
       - name: Configure docker for Artifact Registry
-        run: |
-          gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
+        run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" --quiet
 
       - name: Build & Push image
         run: |
-          ENV="${{ matrix.env }}"
           IMAGE="${REGION}-docker.pkg.dev/${PROJECT}/${REPO}/backend:${ENV}"
           docker build -t "$IMAGE" backend
           docker push "$IMAGE"
 
       - name: Deploy to Cloud Run
         run: |
-          ENV="${{ matrix.env }}"
           SERVICE="foodlabel-backend-${ENV}"
           IMAGE="${REGION}-docker.pkg.dev/${PROJECT}/${REPO}/backend:${ENV}"
           gcloud run deploy "$SERVICE" \

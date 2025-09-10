@@ -9,12 +9,6 @@ jobs:
     permissions:
       id-token: write
       contents: read
-    env:
-      REGION: ${{ vars.GCP_REGION }}
-      SERVICE_NAME: ${{ vars.CLOUD_RUN_SERVICE }}
-      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-      WIF_PROVIDER: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-      WIF_SA_EMAIL: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
 
     steps:
       - uses: actions/checkout@v4
@@ -22,14 +16,22 @@ jobs:
       - id: ver
         run: echo "version=$(tr -d '\n\r' < VERSION)" >> "$GITHUB_OUTPUT"
 
-      - name: Vars
+      - name: Resolve config
         run: |
-          REGION="${REGION:-europe-west1}"
-          SERVICE_NAME="${SERVICE_NAME:-foodlabel-backend}"
-          echo "REGION=$REGION" >> $GITHUB_ENV
-          echo "SERVICE_NAME=$SERVICE_NAME" >> $GITHUB_ENV
+          echo "REGION=${{ vars.GCP_REGION }}" >> $GITHUB_ENV
+          echo "SERVICE_NAME=${{ vars.CLOUD_RUN_SERVICE }}" >> $GITHUB_ENV
+          echo "GCP_PROJECT_ID=${{ secrets.GCP_PROJECT_ID }}" >> $GITHUB_ENV
+          echo "WIF_PROVIDER=${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}" >> $GITHUB_ENV
+          echo "WIF_SA_EMAIL=${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}" >> $GITHUB_ENV
           echo "VERSION=${{ steps.ver.outputs.version }}" >> $GITHUB_ENV
           echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
+
+      - name: Apply defaults
+        run: |
+          : "${REGION:=europe-west1}"
+          : "${SERVICE_NAME:=foodlabel-backend}"
+          echo "REGION=$REGION" >> $GITHUB_ENV
+          echo "SERVICE_NAME=$SERVICE_NAME" >> $GITHUB_ENV
           echo "AR_IMAGE=${REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/foodlabel-repo/${SERVICE_NAME}" >> $GITHUB_ENV
 
       - name: Auth
