@@ -1,63 +1,98 @@
 name: Deploy Backend (prod)
+
 on:
-  push: { branches: [main], paths: ["backend/**","infra/**","VERSION"] }
+  push:
+    branches: [main]
+    paths:
+      - "backend/**"
+      - "infra/**"
+      - "VERSION"
   workflow_dispatch:
-  workflow_run: { workflows: ["Infra Stack (Terraform)"], types: [completed] }
-env:
-  REGION: ${{ vars.GCP_REGION }}
-  SERVICE_NAME: ${{ vars.CLOUD_RUN_SERVICE }}
-  SERVICE_SUFFIX: ""
-  GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
-  WIF_PROVIDER_PROD: ${{ secrets.GCP_WIF_PROVIDER_PROD }}
-  WIF_SA_PROD: ${{ secrets.GCP_SA_PROD }}
-  WIF_PROVIDER_SHARED: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
-  WIF_SA_SHARED: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+  workflow_run:
+    workflows: ["Infra Stack (Terraform)"]
+    types: [completed]
+
 jobs:
   deploy:
     if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
     runs-on: ubuntu-latest
-    permissions: { id-token: write, contents: read }
+    permissions:
+      id-token: write
+      contents: read
+    # If you use environment-scoped secrets for prod, keep this:
+    environment: prod
+    env:
+      REGION: ${{ vars.GCP_REGION }}
+      SERVICE_NAME: ${{ vars.CLOUD_RUN_SERVICE }}
+      SERVICE_SUFFIX: ""
+      GCP_PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      WIF_PROVIDER_PROD: ${{ secrets.GCP_WIF_PROVIDER_PROD }}
+      WIF_SA_PROD: ${{ secrets.GCP_SA_PROD }}
+      WIF_PROVIDER_SHARED: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+      WIF_SA_SHARED: ${{ secrets.GCP_SERVICE_ACCOUNT_EMAIL }}
+
     steps:
       - uses: actions/checkout@v4
+
       - id: ver
         run: echo "version=$(tr -d '\n\r' < VERSION)" >> "$GITHUB_OUTPUT"
+
       - name: Vars
         run: |
-          REGION="${REGION:-europe-west1}"; SERVICE_NAME="${SERVICE_NAME:-foodlabel-backend}"
+          REGION="${REGION:-europe-west1}"
+          SERVICE_NAME="${SERVICE_NAME:-foodlabel-backend}"
           echo "REGION=$REGION" >> $GITHUB_ENV
           echo "SERVICE_NAME=$SERVICE_NAME" >> $GITHUB_ENV
           echo "SERVICE_SUFFIX=${SERVICE_SUFFIX}" >> $GITHUB_ENV
           echo "VERSION=${{ steps.ver.outputs.version }}" >> $GITHUB_ENV
           echo "SHORT_SHA=${GITHUB_SHA::7}" >> $GITHUB_ENV
           echo "AR_IMAGE=${REGION}-docker.pkg.dev/${GCP_PROJECT_ID}/foodlabel-repo/${SERVICE_NAME}" >> $GITHUB_ENV
+
       - name: Auth (PROD)
         if: ${{ env.WIF_PROVIDER_PROD != '' && env.WIF_SA_PROD != '' }}
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ env.WIF_PROVIDER_PROD }}
           service_account: ${{ env.WIF_SA_PROD }}
+
       - name: Auth (SHARED)
         if: ${{ (env.WIF_PROVIDER_PROD == '' || env.WIF_SA_PROD == '') && env.WIF_PROVIDER_SHARED != '' && env.WIF_SA_SHARED != '' }}
         uses: google-github-actions/auth@v2
         with:
           workload_identity_provider: ${{ env.WIF_PROVIDER_SHARED }}
           service_account: ${{ env.WIF_SA_SHARED }}
+
       - name: Fail if no WIF
         if: ${{ (env.WIF_PROVIDER_PROD == '' || env.WIF_SA_PROD == '') && (env.WIF_PROVIDER_SHARED == '' || env.WIF_SA_SHARED == '') }}
-        run: echo '::error::WIF not configured for dev or shared' && exit 1
+        run: echo '::error::WIF not configured for prod or shared' && exit 1
+
       - uses: google-github-actions/setup-gcloud@v2
-        with: { project_id: ${{ env.GCP_PROJECT_ID }} }
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+
       - name: Docker auth
         run: gcloud auth configure-docker "${REGION}-docker.pkg.dev" -q
+
       - name: Build & Push
         run: |
           docker build -t "${AR_IMAGE}:v${VERSION}" -t "${AR_IMAGE}:sha-${SHORT_SHA}" -f backend/Dockerfile .
-          docker push "${AR_IMAGE}:v${VERSION}"; docker push "${AR_IMAGE}:sha-${SHORT_SHA}"
+          docker push "${AR_IMAGE}:v${VERSION}"
+          docker push "${AR_IMAGE}:sha-${SHORT_SHA}"
+
       - name: Ensure service
         run: |
           SVC="${SERVICE_NAME}"
           if ! gcloud run services describe "$SVC" --region "${REGION}" >/dev/null 2>&1; then
-            gcloud run deploy "$SVC" --image "${AR_IMAGE}:v${VERSION}" --region "${REGION}" --allow-unauthenticated
+            gcloud run deploy "$SVC" \
+              --image "${AR_IMAGE}:v${VERSION}" \
+              --region "${REGION}" \
+              --allow-unauthenticated
           fi
+
       - name: Deploy
-        run: gcloud run deploy "${SERVICE_NAME}" --image "${AR_IMAGE}:v${VERSION}" --region "${REGION}" --allow-unauthenticated --labels "app=foodlabel,env=prod,version=${VERSION},commit=${SHORT_SHA}"
+        run: |
+          gcloud run deploy "${SERVICE_NAME}" \
+            --image "${AR_IMAGE}:v${VERSION}" \
+            --region "${REGION}" \
+            --allow-unauthenticated \
+            --labels "app=foodlabel,env=prod,version=${VERSION},commit=${SHORT_SHA}"
